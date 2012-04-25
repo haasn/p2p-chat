@@ -5,3 +5,12 @@ Project goals:
 - Either distributed or decentralized
 - Fully encrypted, based on concepts of public/private key encryption
 - Anonymity will not be a strong point, but privacy will.
+
+Check list:
+
+- Peer to peer: Check
+- Serverless: As far as reasonably possible, boot strapper nodes are somewhat
+  required primarily due to network size and availability constraints
+- Distributed: Check
+- Fully encrypted: Not yet, but trivial
+- Privacy: Check; hashes and signatures in place for verification
