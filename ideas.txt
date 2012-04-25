@@ -1,0 +1,20 @@
+Ideas:
+
+- Discussion organized into three broad sections: Personal, Channel-based
+  and Global. Global messages will simply be relayed to every single user.
+  Channel-based messages will be relayed to every single user that “subscribed”
+  to a given channel; and these will be encrypted with the channel's private
+  key. Personal messages will be encrypted with the recipient's private key
+  directly.
+
+- Identification will be hash based. There will be no moderation, “banning” or
+  join/leave notices in channels; users have the power to ignore certain hashes
+  should the need arise.
+
+- The p2p network will be based on graph theory; ideally it should be
+  “self-healing” or “self-organizing”, orphan nodes will self-connect to make
+  sure the graph doesn't split in two, and channel users will try to make
+  paths between them as short as possible, the graph will organize to make
+  heavy routing paths shorter or more efficient. Possible use of neural
+  networks to memorize routing efficiency.
+

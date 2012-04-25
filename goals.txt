@@ -1,0 +1,7 @@
+Project goals:
+
+- Peer to peer chat program
+- Fully serverless
+- Either distributed or decentralized
+- Fully encrypted, based on concepts of public/private key encryption
+- Anonymity will not be a strong point, but privacy will.
