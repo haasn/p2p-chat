@@ -263,7 +263,7 @@ The content may content the following sections:
 
   UPDATE section:
 
-  > UPDATE {#LOCATION}
+  > UPDATE {#ADDRESS}
 
   Update or insert the sender's location in the location table (see: SOURCE)
 
