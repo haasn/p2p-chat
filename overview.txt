@@ -1,0 +1,96 @@
+Project goals:
+
+- Peer to peer chat program
+- Fully serverless
+- Either distributed or decentralized
+- Fully encrypted, based on concepts of public/private key encryption
+- Anonymity will not be a strong point, but privacy will.
+
+Ideas:
+
+- Discussion organized into three broad sections: Personal, Channel-based
+  and Global. Global messages will simply be relayed to every single user.
+  Channel-based messages will be relayed to every single user that “subscribed”
+  to a given channel; and these will be encrypted with the channel's private
+  key. Personal messages will be encrypted with the recipient's private key
+  directly.
+
+- Identification will be hash based. There will be no moderation, “banning” or
+  join/leave notices in channels; users have the power to ignore certain hashes
+  should the need arise.
+
+- The p2p network will be based on graph theory; ideally it should be
+  “self-healing” or “self-organizing”, orphan nodes will self-connect to make
+  sure the graph doesn't split in two, and channel users will try to make
+  paths between them as short as possible, the graph will organize to make
+  heavy routing paths shorter or more efficient. Possible use of neural
+  networks to memorize routing efficiency.
+
+
+Network:
+
+- The entire network will be structured into a ring buffer, with links
+  connecting each node with its neighbour, its neighbour's neighbour, and so
+  on. These “secondary”, “tertiary” etc. connections will serve as a backup to
+  restore the network in case of node dropouts. With a “node buffer” of n
+  nodes, a maximum tolerance of 2n simultaneous node failures can be achieved
+  while still allowing recovery of the ring..
+
+- It might be advisable to dynamically grow and shrink the size of the “node
+  buffer” depending on the current perceived volatility of the network as a
+  whole, based on global connection drop messages.
+
+- If possible, secondary and tertiary nodes can be used to speed up transfers
+  to distant recipients.
+
+- Each node has a unique, per-session “location” in the network; locations
+  will be stored as floating point integers, possibly in the range 0-1. When a
+  new node is connected into the network; it obtains a location in between the
+  two nodes it will be immediately adjacent to. Locations wrap around, that is
+  1 and 0 are identical and 0.99 is close to 0.01. Packets are routed in a
+  clockwise or counterclockwise fashion depending on the numerical relation
+  between the packet's destination address and the transmitting node's address.
+
+- Floating point imprecision will be handled by a system of “fuzzy routing”,
+  where a destination address that is closer by a significant degree to a
+  node's address than that node is to its neighbours will be handled as a
+  match. Otherwise, “misses” will result in rejected/returned packets
+  notifying the sender of a routing failure. A similar concept of “proximity
+  routing” will be used for DHT requests where the goal is not to find an
+  exact node but a “close” node.
+
+- To handle growing and shrinking network requirements, it may be wise to
+  build in a system to “restructure” the ring by distributing locations evenly.
+
+- Key nodes will serve as publicly known “bootstrappers”, whose job it is to
+  hand out the IPs of random nodes in the network in order to allow new nodes
+  to connect into the ring.
+
+- A global read-only DHT will be used for the name -> hash association. Two
+  routing modes will be present in the network protocol. Global routing, which
+  will broadcast a packet to every single participating node and single routing
+  which will send a packet to a single target hash.
+
+- A secondary, global DHT will be used for the floating hash -> position
+  associations. This DHT will be constructed in such a way that changes must
+  be signed with the hash of that entry's private key; this way only a user
+  can truly inform others of his current position in the network.
+
+- The DHT will work using a hashing function of type Def(DHT) -> Loc where
+  Def(DHT) represents the definition space of the DHT table; known henceforth
+  as “key space”. Said hashing function is impartial to collisions and other
+  imprecisions and will serve purely as a method for assigning DHT entries to
+  participating nodes. Each node will be in charge of the DHT entries in
+  closest proximity to its own address. Should a node join the network, it
+  will receive the DHT entries it shall henceforth be in charge of from its
+  immediate neighbours. Should a node leave the network, the peers in its
+  proximity are required to restore the missing entries from their own backup
+  data. For this purpose, DHT entries shall be announced to immediate
+  neighbours upon change.
+
+- To prevent catastrophic data loss upon global decay; “bootstrapper nodes”
+  will also strive to keep a backup of the entire DHT table at all times in
+  order to “seed” a new network from scratch, possibly by using a broadcast
+  packet for DHT requests to inspect the entire table. [Note to self: Inspect
+  ways to reduce the amount of attack vectors the resulting network stress
+  would open]
