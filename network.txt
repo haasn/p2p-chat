@@ -22,6 +22,12 @@ Network:
   clockwise or counterclockwise fashion depending on the numerical relation
   between the packet's destination address and the transmitting node's address.
 
+- The addresses will arbitrarily be defined as counting in a clockwise fashion
+  starting from the origin (0, also 1). To imagine the network as a clock,
+  0.25 will correspond to 3:00, 0.5 to 6:00 and 0.75 to 9:00 on the clock's
+  face. 0:00=12:00 will be 0=1. Global messages will proceed in a clockwise
+  fashion until they reach the sender again.
+
 - Floating point imprecision will be handled by a system of “fuzzy routing”,
   where a destination address that is closer by a significant degree to a
   node's address than that node is to its neighbours will be handled as a
