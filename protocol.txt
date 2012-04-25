@@ -1,0 +1,87 @@
+Protocol structure:
+
+In effort to easen debugging as well as for academic illustration, the
+protocol will be largely text-based, with keywords and commands given in
+English.
+
+The protocol will be divided into two fundamental parts; the routing header
+and the content. The routing header is in charge of determining where a packet
+is sent, the content is in charge of transmitting information and negotiating
+interactions.
+
+A single packet will be divided into “sections”; each of these consist of a
+keyword as well as multiple parameters. Sections will be separated by
+newlines, with keywords/parameters being separated by spaces. A field which
+needs to contain spaces, eg. as part of a message or name, will be surrounded
+by NULL (0x00) characters, which will be invalid characters for any other
+purposes. The protocol is to be transmitted in such a way that permits the
+usage of NULL characters, eg. with length-specified carrier packets
+
+The separation between the routing header and the content is to be done using
+a completely empty section; in other words, an empty line
+
+
+Routing header:
+
+The routing header may contain the following sections:
+
+
+  TARGET section:
+
+  > TARGET <TYPE> [<ADDRESS>]
+
+  “TYPE” may either “GLOBAL”, to indicate a global packet, “EXACT” to indicate
+  a packet sent to a single destination node, or “APPROX” to indicate a
+  DHT-style proximity route where the target is the /closest/ node to given
+  ADDRESS.
+
+  ADDRESS must be present if type is “EXACT” or “APPROX”, and may not be
+  present if type is “GLOBAL”, and indicates the recipient of the packet.
+
+  Examples:
+
+  > TARGET GLOBAL
+  > TARGET EXACT 0.784
+  > TARGET APPROX 0.321
+
+
+  SOURCE section:
+
+  > SOURCE <HASH> <SIGNATURE>
+
+  “HASH” must be the identifying hash of the packet's original sender.
+  Signature must be a cryptographic signature that can be verified using HASH,
+  encoded using base 64.
+
+  Examples:
+
+  > SOURCE 3f1f10b8d7 VGEtZGFhIQ==
+
+
+  SOURCEADDR section:
+
+  > SOURCEADDR <ADDRESS>
+
+  “ADDRESS” corresponds to the original sender's address. This section is
+  entirely optional, and serves mainly to speed up negotiatons. However, it is
+  to be noted that it can not necessarily be trusted. If it is missing, the
+  return address will instead be queried from the DHT.
+
+  Examples:
+
+  > SOURCEADDR 0.513
+
+
+The routing header must adhere to the following rules:
+
+- The TARGET section must be present.
+- The SOURCE section must be present.
+- SIGNATURE must verify with HASH.
+
+Any packets not complying with these restrictions shall be discarded
+immediately and without further notice.
+
+
+Content:
+
+<TODO>
