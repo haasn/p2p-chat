@@ -1,3 +1,5 @@
+PROTOCOL VERSION: 1
+
 Protocol structure:
 
 In effort to easen debugging as well as for academic illustration, the
@@ -12,13 +14,37 @@ interactions.
 A single packet will be divided into “sections”; each of these consist of a
 keyword as well as multiple parameters. Sections will be separated by
 newlines, with keywords/parameters being separated by spaces. A field which
-needs to contain spaces, eg. as part of a message or name, will be surrounded
-by NULL (0x00) characters, which will be invalid characters for any other
-purposes. The protocol is to be transmitted in such a way that permits the
-usage of NULL characters, eg. with length-specified carrier packets
+needs to contain spaces, eg. as part of a message or name, will be specified
+as base 64 encoded.
 
 The separation between the routing header and the content is to be done using
 a completely empty section; in other words, an empty line
+
+Legend:
+
+  > NAME
+  A literal, will appear as-is and is case insensitive.
+
+  > <NAME>
+  A placeholder, see description.
+
+  > {NAME}
+  A placeholder for a base 64 encoded value.
+
+  > {%NAME}
+  A placeholder for an AES-encrypted, base 64 encoded value.
+
+  > {#NAME}
+  A placeholder for an RSA-encrypted, base 64 encoded value.
+
+  > {%?NAME}
+  > {#?NAME}
+  Same as the above two, but optionally encrypted (see description).
+
+  (For illustrative purposes, fields marked as encrypted will not actually
+  be encrypted in the examples given below. Similarly, fields marked as base
+  64 encoded will be surrounded by curly braces in the examples and given in
+  plaintext instead.)
 
 
 Routing header:
@@ -47,15 +73,14 @@ The routing header may contain the following sections:
 
   SOURCE section:
 
-  > SOURCE <HASH> <SIGNATURE>
+  > SOURCE <HASH> {SIGNATURE}
 
-  “HASH” must be the identifying hash of the packet's original sender.
-  Signature must be a cryptographic signature that can be verified using HASH,
-  encoded using base 64.
+  “HASH” must be the identifying hash of the packet's original sender in hex.
+  Signature must be a cryptographic signature that can be verified using HASH.
 
   Examples:
 
-  > SOURCE 3f1f10b8d7 VGEtZGFhIQ==
+  > SOURCE 3f1f10b8d7 {It's really me!}
 
 
   SOURCEADDR section:
@@ -72,11 +97,57 @@ The routing header may contain the following sections:
   > SOURCEADDR 0.513
 
 
+  VERSION section:
+
+  > VERSION <VER>
+
+  Indicates the protocol version needed to generate and/or understand the
+  packet. Clients are free to ignore this and proceed with caution, as the
+  core routing protocol /should/ stay reasonably backwards compatible.
+  However, the client is strongly urged to display a warning to the user
+  notifying him of outdated or incompatible software.
+
+  Examples:
+
+  > VERSION 1
+
+
+  SUPPORT section:
+
+  > SUPPORT <VER>
+
+  Indicates support for a given protocol version. If present, the recipient is
+  advised to remember this protocol support and respect it for backwards
+  compatibility. However, this is not a requirement per se; and a
+  specification-conforming client can choose to ignore it. The user of
+  outdated software puts himself at risk of non-interoparability, not the
+  other way round.
+
+  The version number includes retroactive support; it is implied that a client
+  supporting version n also supports n-1, n-2, ... 1.
+
+  Examples:
+
+  > SUPPORT 4
+
+
+  DROP section:
+
+  > DROP <ADDRESS>
+
+  A previous packet could not be routed to ADDRESS. This is a permanent
+  routing error.
+
+  Examples:
+
+  > DROP 0.2129
+
+
 The routing header must adhere to the following rules:
 
 - The TARGET section must be present.
 - The SOURCE section must be present.
-- SIGNATURE must verify with HASH.
+- [In SOURCE] SIGNATURE must verify with HASH.
 
 Any packets not complying with these restrictions shall be discarded
 immediately and without further notice.
@@ -84,4 +155,151 @@ immediately and without further notice.
 
 Content:
 
-<TODO>
+The content may content the following sections:
+
+
+  = Delivering messages =
+
+  MESSAGE section:
+
+  > MESSAGE <TYPE> {%?DATA}
+
+  A simple textual message. “TYPE” may be “GLOBAL”, “CHANNEL” or “SINGLE”.
+  SINGLE and CHANNEL messages will contain encrypted DATA, GLOBAL messages
+  will not.
+
+  Examples:
+
+  > MESSAGE GLOBAL {Hello, world!}
+  > MESSAGE CHANNEL {Very secret channel message.}
+  > MESSAGE SINGLE {Extremely confidential royal bank information}
+
+
+  = Negotiating connection parameters =
+
+  KEY section:
+
+  > KEY {#DATA}
+
+  Contains the agreed upon AES key in use for point to point communications.
+
+  Examples:
+
+  > KEY {Heavily encrypted key goes here}
+
+
+  = Querying the hash table =
+
+  WHOIS section:
+
+  > WHOIS {#NAME}
+
+  Look up NAME in the recipient's hash table.
+
+  Examples:
+
+  > WHOIS {nand}
+
+
+  THISIS section:
+
+  > THISIS {#NAME} {#HASH}
+
+  Contains the reply of a previous WHOIS inquiry.
+
+  Examples:
+
+  > THISIS {nand} {4c3e72}
+
+
+  NOEXIST section:
+
+  > NOEXIST {#NAME}
+
+  NAME does not exist in the DHT (is therefore available). Reply to WHOIS.
+
+  Examples:
+
+  > NOEXIST {xor}
+
+
+  = Querying the location table =
+
+  WHEREIS section:
+
+  > WHEREIS {#HASH}
+
+  Look up HASH in the recipient's location table.
+
+  Examples:
+
+  > WHEREIS {4c3e72}
+
+
+  HEREIS section:
+
+  > HEREIS {#HASH} {#ADDRESS}
+
+  Contains the reply of a previous WHEREIS inquiry.
+
+  Examples:
+
+  > HEREIS {4c3e72} {0.82735}
+
+
+  NOTFOUND section:
+
+  > NOTFOUND {#HASH}
+
+  HASH has not been found and is therefore most likely offline. Reply to
+  WHEREIS.
+
+  Examples:
+
+  > NOTFOUND {4c3e72}
+
+
+  = Upating the location table =
+
+  UPDATE section:
+
+  > UPDATE {#LOCATION}
+
+  Update or insert the sender's location in the location table (see: SOURCE)
+
+  Examples:
+
+  > UPDATE {0.29834}
+
+
+  = Adding new entries to the hash table =
+
+  REGISTER section:
+
+  > REGISTER {#NAME}
+
+  Register the sender into the hash table, if not already existant.
+
+  Examples:
+
+  > REGISTER {xor}
+
+
+  EXIST section:
+
+  > EXIST {#NAME}
+
+  Response to an invalid REGISTER in case of an already existing hash table
+  entry.
+
+  Examples:
+
+  > EXIST {nand}
+
+
+<TODO:>
+
+- Add missing sections, eg. connection negotiation and repair.
+
+- Content sections are too fragile, find ways to ensure KEY etc. are not
+  modified by third parties, explore usage of cryptographic signatures.
