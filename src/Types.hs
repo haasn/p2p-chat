@@ -4,13 +4,14 @@ import           Codec.Crypto.RSA (PublicKey, PrivateKey)
 import           Crypto.Random (SystemRandom)
 
 import           Control.Monad.State.Strict (StateT)
+import           Control.Monad.Error (ErrorT)
 
 import           Data.ByteString (ByteString)
 import qualified Data.Map as Map
 
 -- Global monad
 
-type P2P = StateT P2PState IO
+type P2P = ErrorT String (StateT P2PState IO)
 
 -- Global state
 
@@ -22,6 +23,7 @@ data P2PState = P2PState
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
   , randomGen :: SystemRandom
+  , context   :: Context
   }
 
 -- Friendly types
@@ -88,8 +90,8 @@ newtype RSA t    = RSA t
 -- Type class for serializing / deserializing
 
 class Serializable s where
-  encode :: Context -> s -> P2P ByteString
-  decode :: Context -> ByteString -> P2P (Maybe s)
+  encode :: s -> P2P ByteString
+  decode :: ByteString -> P2P s
 
 -- Serialization context, used to pass along key information
 
