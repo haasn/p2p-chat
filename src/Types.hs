@@ -36,18 +36,18 @@ data CSection =
 
   -- Hash table interactions
 
-  | WhoIs (RSA64 Name)
-  | ThisIs (RSA64 Name) (RSA64 Hash)
-  | NoExist (RSA64 Name)
-  | Register (RSA64 Name)
-  | Exist (RSA64 Name)
+  | WhoIs (Base64 Name)
+  | ThisIs (Base64 Name) (Base64 Hash)
+  | NoExist (Base64 Name)
+  | Register (Base64 Name)
+  | Exist (Base64 Name)
 
   -- Location table interactions
 
-  | WhereIs (RSA64 Hash)
-  | HereIs (RSA64 Hash) (RSA64 Address)
-  | NotFound (RSA64 Hash)
-  | Update (RSA64 Address)
+  | WhereIs (Base64 Hash)
+  | HereIs (Base64 Hash) (Base64 Address)
+  | NotFound (Base64 Hash)
+  | Update (Base64 Address)
 
 -- Helpers
 
