@@ -1,8 +1,12 @@
-import           Codec.Crypto.RSA (PublicKey)
+module P2P.Types where
 
-import           Data.ByteString.Lazy (ByteString)
+import           Codec.Crypto.RSA (PublicKey, PrivateKey)
+import           Crypto.Random (SystemRandom)
+
+import           Control.Monad.State.Strict (StateT)
+
+import           Data.ByteString (ByteString)
 import qualified Data.Map as Map
-import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
 -- Global monad
 
@@ -17,14 +21,17 @@ data P2PState = P2PState
   , locTable  :: Map.Map Id Address
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
+  , randomGen :: SystemRandom
   }
 
 -- Friendly types
 
-type Id        = PublicKey
-type Name      = String
-type Signature = ByteString
-type Address   = Double
+type Id         = PublicKey
+type Name       = String
+type Signature  = ByteString
+type Address    = Double
+type Connection = ()
+type AESKey     = ByteString
 
 -- Packet structure
 
@@ -43,10 +50,9 @@ data RSection =
   | Support Int
   | Drop Address
 
-
 data CSection =
-    Message MessageType ByteString (Base64 Signature) -- This ByteString must be taken care of separately
-  | Key (RSA64 Key) (Base64 Signature)
+    Message MessageType ByteString (Base64 Signature) -- This ByteString must be encoded separately
+  | Key (RSA64 PublicKey) (Base64 Signature)
 
   -- Id table interactions
 
@@ -68,6 +74,11 @@ data CSection =
 type RSA64 t = Base64 (RSA t)
 type AES64 t = Base64 (AES t)
 
+-- Target types
+
+data TargetType  = TGlobal | Exact | Approx
+data MessageType = MGlobal | Channel | Single
+
 -- Safety types for Base64 and encryption; only used to enforce parsing/serializing rules
 
 newtype Base64 t = Base64 t
@@ -76,6 +87,20 @@ newtype RSA t    = RSA t
 
 -- Type class for serializing / deserializing
 
-class Packet p where
-  toPacket   :: p -> P2P ByteString
-  fromPacket :: ByteString -> P2P p
+class Serializable s where
+  encode :: Context -> s -> P2P ByteString
+  decode :: Context -> ByteString -> P2P (Maybe s)
+
+-- Serialization context, used to pass along key information
+
+data Context = Context
+  { keyRSA     :: Maybe PublicKey
+  , keyAES     :: Maybe AESKey
+  , targetId   :: Maybe Id
+  , targetAddr :: Maybe Address
+  }
+
+-- Default context
+
+nullContext :: Context
+nullContext = Context Nothing Nothing Nothing Nothing
