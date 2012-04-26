@@ -43,15 +43,15 @@ Network:
   hand out the IPs of random nodes in the network in order to allow new nodes
   to connect into the ring.
 
-- A global read-only DHT will be used for the name -> hash association. Two
+- A global read-only DHT will be used for the name -> id association. Two
   routing modes will be present in the network protocol. Global routing, which
   will broadcast a packet to every single participating node and single routing
-  which will send a packet to a single target hash.
+  which will send a packet to a single target id.
 
-- A secondary, global DHT will be used for the floating hash -> position
+- A secondary, global DHT will be used for the floating id -> position
   associations. This DHT will be constructed in such a way that changes must
-  be signed with the hash of that entry's private key; this way only a user
-  can truly inform others of his current position in the network.
+  be signed with that entry's private key; this way only a user can truly
+  inform others of his current position in the network.
 
 - The DHT will work using a hashing function of type Def(DHT) -> Loc where
   Def(DHT) represents the definition space of the DHT table; known henceforth

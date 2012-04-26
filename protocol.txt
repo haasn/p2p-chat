@@ -41,6 +41,12 @@ Legend:
   > {#?NAME}
   Same as the above two, but optionally encrypted (see description).
 
+  > {NAME.SIGNATURE}
+  A cryptographic RSA signature for the NAME field. If a packet contains any
+  section where the FIELD.SIGNATURE does not verify using FIELD and the id
+  given in SOURCE; the packet must be dropped immediately and without further
+  notice. Signatures need not be encrypted.
+
   (For illustrative purposes, fields marked as encrypted will not actually
   be encrypted in the examples given below. Similarly, fields marked as base
   64 encoded will be surrounded by curly braces in the examples and given in
@@ -73,19 +79,18 @@ The routing header may contain the following sections:
 
   SOURCE section:
 
-  > SOURCE <HASH> {SIGNATURE}
+  > SOURCE {ID} {ID.SIGNATURE}
 
-  “HASH” must be the identifying hash of the packet's original sender in hex.
-  Signature must be a cryptographic signature that can be verified using HASH.
+  “ID” must be the identifying public key of the packet's original sender.
 
   Examples:
 
-  > SOURCE 3f1f10b8d7 {It's really me!}
+  > SOURCE 3f1f10b8d7 {3f1f10b8d7}
 
 
   SOURCEADDR section:
 
-  > SOURCEADDR <ADDRESS>
+  > SOURCEADDR <ADDRESS> {ADDRESS.SIGNATURE}
 
   “ADDRESS” corresponds to the original sender's address. This section is
   entirely optional, and serves mainly to speed up negotiatons. However, it is
@@ -147,7 +152,6 @@ The routing header must adhere to the following rules:
 
 - The TARGET section must be present.
 - The SOURCE section must be present.
-- [In SOURCE] SIGNATURE must verify with HASH.
 
 Any packets not complying with these restrictions shall be discarded
 immediately and without further notice.
@@ -162,7 +166,7 @@ The content may content the following sections:
 
   MESSAGE section:
 
-  > MESSAGE <TYPE> {%?DATA}
+  > MESSAGE <TYPE> {%?DATA} {DATA.SIGNATURE}
 
   A simple textual message. “TYPE” may be “GLOBAL”, “CHANNEL” or “SINGLE”.
   SINGLE and CHANNEL messages will contain encrypted DATA, GLOBAL messages
@@ -179,7 +183,7 @@ The content may content the following sections:
 
   KEY section:
 
-  > KEY {#DATA}
+  > KEY {#DATA} {DATA.SIGNATURE}
 
   Contains the agreed upon AES key in use for point to point communications.
 
@@ -188,13 +192,13 @@ The content may content the following sections:
   > KEY {Heavily encrypted key goes here}
 
 
-  = Querying the hash table =
+  = Querying the id table =
 
   WHOIS section:
 
   > WHOIS {NAME}
 
-  Look up NAME in the recipient's hash table.
+  Look up NAME in the recipient's id table.
 
   Examples:
 
@@ -203,7 +207,7 @@ The content may content the following sections:
 
   THISIS section:
 
-  > THISIS {NAME} {HASH}
+  > THISIS {NAME} {ID}
 
   Contains the reply of a previous WHOIS inquiry.
 
@@ -227,9 +231,9 @@ The content may content the following sections:
 
   WHEREIS section:
 
-  > WHEREIS {HASH}
+  > WHEREIS {ID}
 
-  Look up HASH in the recipient's location table.
+  Look up ID in the recipient's location table.
 
   Examples:
 
@@ -238,7 +242,7 @@ The content may content the following sections:
 
   HEREIS section:
 
-  > HEREIS {HASH} {ADDRESS}
+  > HEREIS {ID} {ADDRESS}
 
   Contains the reply of a previous WHEREIS inquiry.
 
@@ -249,9 +253,9 @@ The content may content the following sections:
 
   NOTFOUND section:
 
-  > NOTFOUND {HASH}
+  > NOTFOUND {ID}
 
-  HASH has not been found and is therefore most likely offline. Reply to
+  ID has not been found and is therefore most likely offline. Reply to
   WHEREIS.
 
   Examples:
@@ -263,7 +267,7 @@ The content may content the following sections:
 
   UPDATE section:
 
-  > UPDATE {ADDRESS}
+  > UPDATE {ADDRESS} {ADDRESS.SIGNATURE}
 
   Update or insert the sender's location in the location table (see: SOURCE)
 
@@ -272,13 +276,13 @@ The content may content the following sections:
   > UPDATE {0.29834}
 
 
-  = Adding new entries to the hash table =
+  = Adding new entries to the id table =
 
   REGISTER section:
 
-  > REGISTER {NAME}
+  > REGISTER {NAME} {NAME.SIGNATURE}
 
-  Register the sender into the hash table, if not already existant.
+  Register the sender into the id table, if not already existant.
 
   Examples:
 
@@ -289,7 +293,7 @@ The content may content the following sections:
 
   > EXIST {NAME}
 
-  Response to an invalid REGISTER in case of an already existing hash table
+  Response to an invalid REGISTER in case of an already existing id table
   entry.
 
   Examples:
