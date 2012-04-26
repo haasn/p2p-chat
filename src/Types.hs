@@ -1,16 +1,30 @@
-import Codec.Crypto.RSA (PublicKey)
-import Data.ByteString (ByteString)
-import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import           Codec.Crypto.RSA (PublicKey)
 
+import           Data.ByteString.Lazy (ByteString)
+import qualified Data.Map as Map
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
--- Cryptographic hash for identifying users
+-- Global monad
 
-type Hash = PublicKey
+type P2P = StateT P2PState IO
 
--- Name for identifying users more familiarly
+-- Global state
 
-type Name = String
+data P2PState = P2PState
+  { rightConn :: [Connection]
+  , leftConn  :: [Connection]
+  , keyTable  :: Map.Map Name Id
+  , locTable  :: Map.Map Id Address
+  , pubKey    :: PublicKey
+  , privKey   :: PrivateKey
+  }
+
+-- Friendly types
+
+type Id        = PublicKey
+type Name      = String
+type Signature = ByteString
+type Address   = Double
 
 -- Packet structure
 
@@ -23,39 +37,36 @@ type Content       = [CSection]
 
 data RSection =
     Target TargetType (Maybe Address)
-  | Source Hash (Base64 Signature)
-  | SourceAddr Address
+  | Source Id (Base64 Signature)
+  | SourceAddr Address (Base64 Signature)
   | Version Int
   | Support Int
   | Drop Address
 
 
 data CSection =
-    Message MessageType (Base64 (Either ByteString (AES ByteString)))
-  | Key (RSA64 Key))
+    Message MessageType ByteString (Base64 Signature) -- This ByteString must be taken care of separately
+  | Key (RSA64 Key) (Base64 Signature)
 
-  -- Hash table interactions
+  -- Id table interactions
 
   | WhoIs (Base64 Name)
-  | ThisIs (Base64 Name) (Base64 Hash)
+  | ThisIs (Base64 Name) (Base64 Id)
   | NoExist (Base64 Name)
-  | Register (Base64 Name)
+  | Register (Base64 Name) (Base64 Signature)
   | Exist (Base64 Name)
 
   -- Location table interactions
 
-  | WhereIs (Base64 Hash)
-  | HereIs (Base64 Hash) (Base64 Address)
-  | NotFound (Base64 Hash)
-  | Update (Base64 Address)
+  | WhereIs (Base64 Id)
+  | HereIs (Base64 Id) (Base64 Address)
+  | NotFound (Base64 Id)
+  | Update (Base64 Address) (Base64 Signature)
 
 -- Helpers
 
 type RSA64 t = Base64 (RSA t)
 type AES64 t = Base64 (AES t)
-
-toMaybe :: Either a b -> Maybe b
-toMaybe = either (const Nothing) Just
 
 -- Safety types for Base64 and encryption; only used to enforce parsing/serializing rules
 
@@ -63,39 +74,8 @@ newtype Base64 t = Base64 t
 newtype AES t    = AES t
 newtype RSA t    = RSA t
 
+-- Type class for serializing / deserializing
 
--- Type class for serializable / unserializable types, per protocol
-
-class Serializable s where
-  encode :: s -> ByteString
-  decode :: ByteString -> Maybe s
-
-
--- Type instances for above types
-
-instance Serializable ByteString where
-  encode = id
-  decode = Just
-
-instance Serializable Text where
-  encode = encodeUtf8
-  decode = toMaybe . decodeUtf8'
-
-instance Serializable String where
-  encode   = encode . fromString
-  decode c = unpack `fmap` decode c
-
-instance Serializable Hash where
-  -- TODO
-
-instance Serializable t => Serializable (Base64 t) where
-  encode (Base64 t) = B64.encode (encode t)
-  decode (Base64 t) = toMaybe $ B64.decode (decode t)
-
-instance Serializable t => Serializable (RSA t) where
-  encode (RSA t) = -- ...
-  decode (RSA t) =
-
-instance Serializable t => Serializable (AES t) where
-  encode (AES t) =
-  decode (AES t) =
+class Packet p where
+  toPacket   :: p -> P2P ByteString
+  fromPacket :: ByteString -> P2P p
