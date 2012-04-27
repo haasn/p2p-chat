@@ -2,6 +2,7 @@ module P2P.Util where
 
 import           Control.Monad.Error (throwError)
 
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
@@ -28,38 +29,38 @@ import           P2P.Types
 
 -- Deal with mixtures of strict and lazy ByteStrings
 
-toLazy :: BS.ByteString -> LBS.ByteString
+toLazy :: ByteString -> LBS.ByteString
 toLazy = LBS.fromChunks . return
 
-fromLazy :: LBS.ByteString -> BS.ByteString
+fromLazy :: LBS.ByteString -> ByteString
 fromLazy = BS.concat . LBS.toChunks
 
-wrapLazy :: (LBS.ByteString -> LBS.ByteString) -> BS.ByteString -> BS.ByteString
+wrapLazy :: (LBS.ByteString -> LBS.ByteString) -> ByteString -> ByteString
 wrapLazy f = fromLazy . f . toLazy
 
 -- Wrapper functions for Codec.Crypto.RSA
 
-encryptRSA :: CryptoRandomGen g => g -> PublicKey -> BS.ByteString -> (BS.ByteString, g)
+encryptRSA :: CryptoRandomGen g => g -> PublicKey -> ByteString -> (ByteString, g)
 encryptRSA g pk bs = let (res, g') = encrypt g pk (toLazy bs) in (fromLazy res, g')
 
-decryptRSA :: PrivateKey -> BS.ByteString -> BS.ByteString
+decryptRSA :: PrivateKey -> ByteString -> ByteString
 decryptRSA = wrapLazy . decrypt
 
-sign' :: PrivateKey -> BS.ByteString -> BS.ByteString
+sign' :: PrivateKey -> ByteString -> ByteString
 sign' = wrapLazy . RSA.sign
 
-verify' :: PublicKey -> BS.ByteString -> BS.ByteString -> Bool
+verify' :: PublicKey -> ByteString -> ByteString -> Bool
 verify' pk msg sig = RSA.verify pk (toLazy msg) (toLazy sig)
 
 -- Wrapper functions for Codec.Crypto.AES
 
-encryptAES :: AESKey -> BS.ByteString -> P2P BS.ByteString
+encryptAES :: AESKey -> ByteString -> P2P ByteString
 encryptAES key bs = withRandomGen $ \gen ->
   case genBytes 16 gen of
     Left e        -> throwError $ "IV generation failed: " ++ show e
     Right (iv, g) -> return (iv `BS.append` crypt' CFB key iv Encrypt bs, g)
 
-decryptAES :: AESKey -> BS.ByteString -> BS.ByteString
+decryptAES :: AESKey -> ByteString -> ByteString
 decryptAES key msg = crypt' CFB key iv Decrypt bs
   where (iv, bs) = BS.splitAt 16 msg
 
@@ -87,7 +88,7 @@ getTargetAddr = fromEither . maybe (Left "No target address in current context")
 getTargetKey :: Context -> P2P AESKey
 getTargetKey = fromEither . maybe (Left "No target key in current context") Right . targetKey
 
-getLastField :: Context -> P2P BS.ByteString
+getLastField :: Context -> P2P ByteString
 getLastField = fromEither . maybe (Left "No previously serialized field") Right . lastField
 
 -- Helper functions
@@ -108,7 +109,7 @@ isJust :: Maybe a -> Bool
 isJust (Just _) = True
 isJust Nothing  = False
 
-pack' :: String -> BS.ByteString
+pack' :: String -> ByteString
 pack' = encodeUtf8 . fromString
 
 ord' :: Char -> Word8
@@ -124,18 +125,18 @@ toWord8 = map fromIntegral . unfoldr f
 fromWord8 :: Integral a => [Word8] -> a
 fromWord8 = foldr (\a b -> a + 256*b) 0 . map fromIntegral
 
-encIntegral :: Integral a => a -> BS.ByteString
+encIntegral :: Integral a => a -> ByteString
 encIntegral = BS.pack . toWord8
 
-decIntegral :: Integral a => BS.ByteString -> a
+decIntegral :: Integral a => ByteString -> a
 decIntegral = fromWord8 . BS.unpack
 
 -- Convert a double to and from bytestrings
 
-encDouble :: Double -> BS.ByteString
+encDouble :: Double -> ByteString
 encDouble = fromLazy . runPut . putFloat64le
 
-decDouble :: BS.ByteString -> Double
+decDouble :: ByteString -> Double
 decDouble = runGet getFloat64le . toLazy
 
 -- Higher order composition

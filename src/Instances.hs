@@ -182,7 +182,7 @@ group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> (sequence $
     upd :: P2P ByteString -> P2P ByteString
     upd a = do
       res <- a
-      modifyContext $ \ctx -> ctx { lastField = Just res }
+      setLastField res
       return res
 
 ungroup' :: ByteString -> [ByteString]
