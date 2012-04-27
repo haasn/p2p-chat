@@ -4,10 +4,10 @@ module P2P.Instances where
 
 import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
-import           Control.Monad.State.Strict (gets, put)
+import           Control.Monad.State.Strict (gets)
 import           Control.Applicative
 
-import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
+import           Codec.Crypto.RSA (PublicKey(..))
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -19,8 +19,6 @@ import           Data.Char (toLower)
 import           Data.Text (Text, unpack)
 import           Data.Text.Encoding
 
-import qualified Data.Serialize as S
-
 import           P2P
 import           P2P.Types
 import           P2P.Util
@@ -29,8 +27,8 @@ import           P2P.Util
 
 instance Serializable RSection where
   encode (Target     t a) = sec "TARGET"     [encode t, encode a]
-  encode (Source     i s) = sec "SOURCE"     [encode i, sign]
-  encode (SourceAddr a s) = sec "SOURCEADDR" [encode a, sign]
+  encode (Source     i _) = sec "SOURCE"     [encode i, sign]
+  encode (SourceAddr a _) = sec "SOURCEADDR" [encode a, sign]
   encode (Version    v  ) = sec "VERSION"    [encode v]
   encode (Support    v  ) = sec "SUPPORT"    [encode v]
   encode (Drop       a  ) = sec "DROP"       [encode a]
@@ -56,16 +54,16 @@ instance Serializable CSection where
             MGlobal -> encode $ Base64 m
             _       -> encode $ Base64 (AES m)
 
-  encode (Key      p s) = sec "KEY"      [encode p, sign]
+  encode (Key      p _) = sec "KEY"      [encode p, sign]
   encode (WhoIs      n) = sec "WHOIS"    [encode n]
   encode (ThisIs   n i) = sec "THISIS"   [encode n, encode i]
   encode (NoExist    n) = sec "NOEXIST"  [encode n]
-  encode (Register n s) = sec "REGISTER" [encode n, sign]
+  encode (Register n _) = sec "REGISTER" [encode n, sign]
   encode (Exist      n) = sec "EXIST"    [encode n]
   encode (WhereIs    i) = sec "WHEREIS"  [encode i]
   encode (HereIs   i a) = sec "HEREIS"   [encode i, encode a]
   encode (NotFound   i) = sec "NOTFOUND" [encode i]
-  encode (Update   a s) = sec "UPDATE"   [encode a, sign]
+  encode (Update   a _) = sec "UPDATE"   [encode a, sign]
 
   decode bs = do
     res <- parse bs
@@ -178,7 +176,7 @@ instance Serializable s => Serializable (AES s) where
 -- Parameter grouping logic
 
 group' :: [P2P ByteString] -> P2P ByteString
-group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> (sequence $ map upd l)
+group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> mapM upd l
   where
     upd :: P2P ByteString -> P2P ByteString
     upd a = do
@@ -204,12 +202,12 @@ parse = parse' . ungroup'
 -- Section grouping logic
 
 instance Serializable RoutingHeader where
-  encode rh = BS.intercalate (pack' "\n") <$> (sequence $ map encode rh)
-  decode bs = sequence . map decode $ BS.split (ord' '\n') bs
+  encode rh = BS.intercalate (pack' "\n") <$> mapM encode rh
+  decode bs = mapM decode $ BS.split (ord' '\n') bs
 
 instance Serializable Content where
-  encode rh = BS.intercalate (pack' "\n") <$> (sequence $ map encode rh)
-  decode bs = sequence . map decode $ BS.split (ord' '\n') bs
+  encode rh = BS.intercalate (pack' "\n") <$> mapM encode rh
+  decode bs = mapM decode $ BS.split (ord' '\n') bs
 
 instance Serializable Packet where
   encode (Packet rh c) = BS.concat <$> sequence [encode rh, return $ pack' "\n\n", encode c]
@@ -228,6 +226,6 @@ verify m s = do
   (Base64 s') <- decode s
   pk <- gets context >>= getTargetId
 
-  case verify' pk m' s' of
-    True  -> return Signature
-    False -> throwError "Signature does not match id"
+  if verify' pk m' s'
+    then return Signature
+    else throwError "Signature does not match id"

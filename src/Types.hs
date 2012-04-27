@@ -124,7 +124,8 @@ data Context = Context
 -- Needed to derive Eq on PublicKey
 
 instance Eq PublicKey where
-  (PublicKey a b c) == (PublicKey a' b' c') = and [a == a', b == b', c == c']
+  (PublicKey a b c) == (PublicKey a' b' c') =
+    (a == a') && (b == b') && (c == c')
 
 -- Default context
 

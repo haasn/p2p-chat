@@ -8,7 +8,7 @@ import qualified Data.ByteString.Lazy as LBS
 
 import           Data.List (unfoldr)
 
-import           Data.Text (unpack)
+import           Data.Text()
 import           Data.Text.Encoding (encodeUtf8)
 import           Data.String (fromString)
 import           Data.Char (ord)
@@ -131,7 +131,7 @@ toWord8 = map fromIntegral . unfoldr f
         f n = Just . swap $ n `divMod` 256
 
 fromWord8 :: Integral a => [Word8] -> a
-fromWord8 = foldr (\a b -> a + 256*b) 0 . map fromIntegral
+fromWord8 = foldr ((\a b -> a + 256*b) . fromIntegral) 0
 
 encIntegral :: Integral a => a -> ByteString
 encIntegral = BS.pack . toWord8
@@ -149,5 +149,5 @@ decDouble = runGet getFloat64le . toLazy
 
 -- Higher order composition
 
+(.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.).(.)
-(.::) = (.:).(.:)

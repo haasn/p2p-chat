@@ -1,12 +1,9 @@
 import P2P
 import P2P.Types
-import P2P.Instances
+import P2P.Instances()
 import P2P.Util
 import P2P.Math
 
-import Data.String (fromString)
-
-import Control.Monad (join)
 import Control.Monad.Trans (liftIO)
 
 import Control.Monad.State.Strict (get, put, evalStateT)
@@ -96,6 +93,7 @@ tests = do
     , roundCheck $ Packet [Source (Base64 pub) Signature, Target TGlobal Nothing] [WhoIs (Base64 "nand"), Exist (Base64 "xor")]
     ]
 
+main :: IO ()
 main = do
   state <- newState
   res   <- evalStateT (runErrorT tests) state

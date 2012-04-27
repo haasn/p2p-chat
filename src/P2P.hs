@@ -25,11 +25,11 @@ addConnection = modify . insertConnection
 insertConnection :: Connection -> P2PState -> P2PState
 insertConnection c st =
   case dir (homeAddr st) (remoteAddr c) of
-    CW  -> st { cwConn  = insert c (cwConn  st) }
-    CCW -> st { ccwConn = insert c (ccwConn st) }
+    CW  -> st { cwConn  = insert (cwConn  st) }
+    CCW -> st { ccwConn = insert (ccwConn st) }
   where
-    insert :: Connection -> [Connection] -> [Connection]
-    insert c cs = let (l,g) = span (\p -> dista p < distb) cs in l ++ [c] ++ g
+    insert :: [Connection] -> [Connection]
+    insert cs = let (l,g) = span (\p -> dista p < distb) cs in l ++ [c] ++ g
       where dista p = dist (homeAddr st) (remoteAddr p)
             distb   = dist (homeAddr st) (remoteAddr c)
 
