@@ -45,12 +45,12 @@ type Content       = [CSection]
 -- Immediate data representation of all available sections, type and structure safe
 
 data RSection =
-    Target TargetType (Maybe Address)
-  | Source Id (Base64 Signature)
-  | SourceAddr Address (Base64 Signature)
-  | Version Int
-  | Support Int
-  | Drop Address
+    Target TargetType (Maybe (Base64 Address))
+  | Source (Base64 Id) (Base64 Signature)
+  | SourceAddr (Base64 Address) (Base64 Signature)
+  | Version (Base64 Integer)
+  | Support (Base64 Integer)
+  | Drop (Base64 Address)
 
 data CSection =
     Message MessageType ByteString (Base64 Signature) -- This ByteString must be encoded separately

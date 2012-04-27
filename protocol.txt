@@ -20,6 +20,18 @@ as base 64 encoded.
 The separation between the routing header and the content is to be done using
 a completely empty section; in other words, an empty line
 
+Integers will be encoded as arbitrary precision integers using a little endian
+coding scheme. Floating point numbers will be encoded as little endian 64-bit
+IEEE754 doubles.
+
+IDs (public keys) will be encoded as followed:
+
+<2 bytes>  key size s
+<s bytes>  public n
+<rest>     public e
+
+All three fields are encoded as Integers (see above).
+
 Legend:
 
   > NAME
@@ -30,6 +42,9 @@ Legend:
 
   > {NAME}
   A placeholder for a base 64 encoded value.
+
+  > [NAME]
+  A placeholder that is optional (see description). Further modifiers apply.
 
   > {%NAME}
   A placeholder for an AES-encrypted, base 64 encoded value.
@@ -60,7 +75,7 @@ The routing header may contain the following sections:
 
   TARGET section:
 
-  > TARGET <TYPE> [<ADDRESS>]
+  > TARGET <TYPE> [{ADDRESS}]
 
   “TYPE” may either “GLOBAL”, to indicate a global packet, “EXACT” to indicate
   a packet sent to a single destination node, or “APPROX” to indicate a
@@ -73,8 +88,8 @@ The routing header may contain the following sections:
   Examples:
 
   > TARGET GLOBAL
-  > TARGET EXACT 0.784
-  > TARGET APPROX 0.321
+  > TARGET EXACT {0.784}
+  > TARGET APPROX {0.321}
 
 
   SOURCE section:
@@ -90,7 +105,7 @@ The routing header may contain the following sections:
 
   SOURCEADDR section:
 
-  > SOURCEADDR <ADDRESS> {ADDRESS.SIGNATURE}
+  > SOURCEADDR {ADDRESS} {ADDRESS.SIGNATURE}
 
   “ADDRESS” corresponds to the original sender's address. This section is
   entirely optional, and serves mainly to speed up negotiatons. However, it is
@@ -99,12 +114,12 @@ The routing header may contain the following sections:
 
   Examples:
 
-  > SOURCEADDR 0.513
+  > SOURCEADDR {0.513}
 
 
   VERSION section:
 
-  > VERSION <VER>
+  > VERSION {VER}
 
   Indicates the protocol version needed to generate and/or understand the
   packet. Clients are free to ignore this and proceed with caution, as the
@@ -114,12 +129,12 @@ The routing header may contain the following sections:
 
   Examples:
 
-  > VERSION 1
+  > VERSION {1}
 
 
   SUPPORT section:
 
-  > SUPPORT <VER>
+  > SUPPORT {VER}
 
   Indicates support for a given protocol version. If present, the recipient is
   advised to remember this protocol support and respect it for backwards
@@ -133,19 +148,19 @@ The routing header may contain the following sections:
 
   Examples:
 
-  > SUPPORT 4
+  > SUPPORT {4}
 
 
   DROP section:
 
-  > DROP <ADDRESS>
+  > DROP {ADDRESS}
 
   A previous packet could not be routed to ADDRESS. This is a permanent
   routing error.
 
   Examples:
 
-  > DROP 0.2129
+  > DROP {0.2129}
 
 
 The routing header must adhere to the following rules:
@@ -273,7 +288,7 @@ The content may content the following sections:
 
   Examples:
 
-  > UPDATE {0.29834}
+  > UPDATE {0.29834} {0.29834}
 
 
   = Adding new entries to the id table =
@@ -286,7 +301,7 @@ The content may content the following sections:
 
   Examples:
 
-  > REGISTER {xor}
+  > REGISTER {xor} {xor}
 
 
   EXIST section:
@@ -304,6 +319,3 @@ The content may content the following sections:
 <TODO:>
 
 - Add missing sections, eg. connection negotiation and repair.
-
-- Content sections are too fragile, find ways to ensure KEY etc. are not
-  modified by third parties, explore usage of cryptographic signatures.

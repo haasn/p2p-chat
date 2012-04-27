@@ -5,12 +5,18 @@ import           Control.Monad.Error (throwError)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
+import           Data.List (unfoldr)
+
 import           Data.Text (unpack)
 import           Data.Text.Encoding (encodeUtf8)
 import           Data.String (fromString)
 import           Data.Char (ord)
-
+import           Data.Tuple (swap)
 import           Data.Word (Word8)
+
+import           Data.Binary.IEEE754
+import           Data.Binary.Put (runPut)
+import           Data.Binary.Get (runGet)
 
 import           Codec.Crypto.RSA
 import           Codec.Crypto.AES
@@ -79,3 +85,27 @@ pack' = encodeUtf8 . fromString
 
 ord' :: Char -> Word8
 ord' = fromIntegral . ord
+
+-- Convert a number to and from base 256 representation
+
+toWord8 :: Integral a => a -> [Word8]
+toWord8 = map fromIntegral . unfoldr f
+  where f 0 = Nothing
+        f n = Just . swap $ n `divMod` 256
+
+fromWord8 :: Integral a => [Word8] -> a
+fromWord8 = foldr (\a b -> a + 256*b) 0 . map fromIntegral
+
+encIntegral :: Integral a => a -> BS.ByteString
+encIntegral = BS.pack . toWord8
+
+decIntegral :: Integral a => BS.ByteString -> a
+decIntegral = fromWord8 . BS.unpack
+
+-- Convert a double to and from bytestrings
+
+encDouble :: Double -> BS.ByteString
+encDouble = fromLazy . runPut . putFloat64le
+
+decDouble :: BS.ByteString -> Double
+decDouble = runGet getFloat64le . toLazy

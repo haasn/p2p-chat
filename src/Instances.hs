@@ -6,7 +6,7 @@ import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Applicative ((<$>), (<*>))
 
-import           Codec.Crypto.RSA (PublicKey, PrivateKey)
+import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
 
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
@@ -16,6 +16,8 @@ import           Data.Char (toLower)
 
 import           Data.Text (Text, unpack)
 import           Data.Text.Encoding
+
+import qualified Data.Serialize as S
 
 import           P2P
 import           P2P.Types
@@ -86,6 +88,14 @@ instance Serializable String where
   encode   = encode . (fromString :: String -> Text)
   decode b = unpack <$> decode b
 
+instance Serializable Integer where
+  encode = return . encIntegral
+  decode = return . decIntegral
+
+instance Serializable Double where
+  encode = return . encDouble
+  decode = return . decDouble
+
 instance Serializable TargetType where
   encode TGlobal = encode "GLOBAL"
   encode Exact   = encode "EXACT"
@@ -117,6 +127,15 @@ instance Serializable s => Serializable (Maybe s) where
   decode bs = if BS.length bs == 0
     then return Nothing
     else Just <$> decode bs
+
+instance Serializable PublicKey where
+  encode (PublicKey s n e) = return $ BS.concat [encIntegral s, encIntegral n, encIntegral e]
+
+  decode bs = return $ PublicKey size (decIntegral n) (decIntegral e)
+    where
+      (s,rest) = BS.splitAt 2 bs
+      size     = decIntegral s
+      (n,e)    = BS.splitAt (fromIntegral size) rest
 
 -- Base64 and encryption logic
 
