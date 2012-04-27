@@ -54,7 +54,7 @@ data RSection =
  deriving (Eq, Show)
 
 data CSection =
-    Message MessageType ByteString Signature -- This ByteString must be encoded separately
+    Message MessageType (Base64 ByteString) Signature -- This ByteString must be encrypted separately
   | Key (RSA64 PublicKey) Signature
 
   -- Id table interactions
@@ -105,6 +105,7 @@ data Context = Context
   { targetId   :: Maybe Id
   , targetAddr :: Maybe Address
   , targetKey  :: Maybe AESKey
+  , lastField  :: Maybe ByteString
   }
  deriving (Eq, Show)
 
@@ -116,4 +117,4 @@ instance Eq PublicKey where
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing
+nullContext = Context Nothing Nothing Nothing Nothing

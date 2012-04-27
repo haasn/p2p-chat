@@ -2,12 +2,14 @@
 
 module P2P.Instances where
 
+import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
-import           Control.Monad.State.Strict (gets)
+import           Control.Monad.State.Strict (gets, put)
 import           Control.Applicative
 
 import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
 
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
@@ -27,8 +29,8 @@ import           P2P.Util
 
 instance Serializable RSection where
   encode (Target     t a) = sec "TARGET"     [encode t, encode a]
-  encode (Source     i s) = sec "SOURCE"     [encode i, sign i]
-  encode (SourceAddr a s) = sec "SOURCEADDR" [encode a, sign a]
+  encode (Source     i s) = sec "SOURCE"     [encode i, sign]
+  encode (SourceAddr a s) = sec "SOURCEADDR" [encode a, sign]
   encode (Version    v  ) = sec "VERSION"    [encode v]
   encode (Support    v  ) = sec "SUPPORT"    [encode v]
   encode (Drop       a  ) = sec "DROP"       [encode a]
@@ -49,16 +51,20 @@ instance Serializable RSection where
       ("drop"      , [a  ]) -> Drop       <$> decode a
 
 instance Serializable CSection where
-  encode (Key      p s) = sec "KEY"      [encode p, sign p]
+  encode (Message t m s) = sec "MESSAGE" $ encode t : case t of
+    MGlobal -> [encode m, sign]
+    _       -> [encode (AES m), sign]
+
+  encode (Key      p s) = sec "KEY"      [encode p, sign]
   encode (WhoIs      n) = sec "WHOIS"    [encode n]
   encode (ThisIs   n i) = sec "THISIS"   [encode n, encode i]
   encode (NoExist    n) = sec "NOEXIST"  [encode n]
-  encode (Register n s) = sec "REGISTER" [encode n, sign n]
+  encode (Register n s) = sec "REGISTER" [encode n, sign]
   encode (Exist      n) = sec "EXIST"    [encode n]
   encode (WhereIs    i) = sec "WHEREIS"  [encode i]
   encode (HereIs   i a) = sec "HEREIS"   [encode i, encode a]
   encode (NotFound   i) = sec "NOTFOUND" [encode i]
-  encode (Update   a s) = sec "UPDATE"   [encode a, sign a]
+  encode (Update   a s) = sec "UPDATE"   [encode a, sign]
 
   decode bs = do
     res <- parse bs
@@ -74,9 +80,17 @@ instance Serializable CSection where
       ("notfound", [i  ]) -> NotFound <$> decode i
       ("update"  , [a,s]) -> Update   <$> decode a <*> verify a s
 
+      ("message" , [t,m,s]) -> do
+        mt <- decode t
+        case mt of
+          MGlobal -> Message mt <$> decode m          <*> verify m s
+          _       -> do
+            (AES msg) <- decode m
+            Message mt msg <$> verify m s
+
 -- Trivial data types
 
-instance Serializable BS.ByteString where
+instance Serializable ByteString where
   encode = return
   decode = return
 
@@ -147,17 +161,14 @@ instance Serializable s => Serializable (RSA s) where
   encode (RSA s) = do
     pk <- gets context >>= getTargetId
     inner <- encode s
-    withRandomGen (\gen -> encryptRSA gen pk inner)
+    withRandomGen (\gen -> return $ encryptRSA gen pk inner)
 
   decode bs = do
     key <- gets privKey
     RSA <$> decode (decryptRSA key bs)
 
 instance Serializable s => Serializable (AES s) where
-  encode (AES s) = do
-    key <- gets context >>= getTargetKey
-    inner <- encode s
-    withRandomGen (\gen -> encryptAES gen key inner)
+  encode (AES s) = join $ encryptAES <$> (gets context >>= getTargetKey) <*> encode s
 
   decode bs = do
     key <- gets context >>= getTargetKey
@@ -165,22 +176,28 @@ instance Serializable s => Serializable (AES s) where
 
 -- Parameter grouping logic
 
-group' :: [P2P BS.ByteString] -> P2P BS.ByteString
-group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> sequence l
+group' :: [P2P ByteString] -> P2P ByteString
+group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> (sequence $ map upd l)
+  where
+    upd :: P2P ByteString -> P2P ByteString
+    upd a = do
+      res <- a
+      modifyContext $ \ctx -> ctx { lastField = Just res }
+      return res
 
-ungroup' :: BS.ByteString -> [BS.ByteString]
+ungroup' :: ByteString -> [ByteString]
 ungroup' = BS.split $ ord' ' '
 
-sec :: String -> [P2P BS.ByteString] -> P2P BS.ByteString
+sec :: String -> [P2P ByteString] -> P2P ByteString
 sec c l = group' $ encode c : l
 
-parse' :: [BS.ByteString] -> P2P (String, [BS.ByteString])
+parse' :: [ByteString] -> P2P (String, [ByteString])
 parse' []     = throwError "Empty section!"
 parse' (x:xs) = do
   cmd <- map toLower <$> decode x
   return (cmd, xs)
 
-parse :: BS.ByteString -> P2P (String, [BS.ByteString])
+parse :: ByteString -> P2P (String, [ByteString])
 parse = parse' . ungroup'
 
 -- Section grouping logic
@@ -201,10 +218,10 @@ instance Serializable Packet where
 
 -- Helper functions for RSA serialization
 
-sign :: Serializable s => s -> P2P BS.ByteString
-sign s = sign' <$> gets privKey <*> encode s
+sign :: P2P ByteString
+sign = (Base64 .: sign' <$> gets privKey <*> (gets context >>= getLastField)) >>= encode
 
-verify :: BS.ByteString -> BS.ByteString -> P2P Signature
+verify :: ByteString -> ByteString -> P2P Signature
 verify m s = do
   m' <- decode m
   (Base64 s') <- decode s

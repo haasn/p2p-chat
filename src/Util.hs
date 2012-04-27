@@ -23,6 +23,7 @@ import qualified Codec.Crypto.RSA as RSA (sign, verify)
 import           Codec.Crypto.AES
 import           Crypto.Random (CryptoRandomGen, genBytes)
 
+import           P2P
 import           P2P.Types
 
 -- Deal with mixtures of strict and lazy ByteStrings
@@ -52,27 +53,42 @@ verify' pk msg sig = RSA.verify pk (toLazy msg) (toLazy sig)
 
 -- Wrapper functions for Codec.Crypto.AES
 
-encryptAES :: CryptoRandomGen g => g -> AESKey -> BS.ByteString -> (BS.ByteString, g)
-encryptAES g key bs = (iv `BS.append` crypt' CFB key iv Encrypt bs, g')
-  where
-    (iv, g') = case genBytes 16 g of
-      Left e  -> error $ "IV generation failed: " ++ show e
-      Right r -> r
+encryptAES :: AESKey -> BS.ByteString -> P2P BS.ByteString
+encryptAES key bs = withRandomGen $ \gen ->
+  case genBytes 16 gen of
+    Left e        -> throwError $ "IV generation failed: " ++ show e
+    Right (iv, g) -> return (iv `BS.append` crypt' CFB key iv Encrypt bs, g)
 
 decryptAES :: AESKey -> BS.ByteString -> BS.ByteString
 decryptAES key msg = crypt' CFB key iv Decrypt bs
   where (iv, bs) = BS.splitAt 16 msg
 
+-- Wrapper functions for random key generation
+
+genKeyPair :: P2P (PublicKey, PrivateKey)
+genKeyPair = withRandomGen $ \gen ->
+  let (pub, priv, new) = generateKeyPair gen 2048
+  in  return ((pub, priv), new)
+
+genAESKey :: P2P AESKey
+genAESKey = withRandomGen $ \gen ->
+  case genBytes 32 gen of
+    Left e  -> throwError $ "AES key generation failed: " ++ show e
+    Right x -> return x
+
 -- Wrapper functions for the Context
 
 getTargetId :: Context -> P2P Id
-getTargetId = fromEither . maybe (Left "No target ID in current contet") Right . targetId
+getTargetId = fromEither . maybe (Left "No target ID in current context") Right . targetId
 
 getTargetAddr :: Context -> P2P Address
-getTargetAddr = fromEither . maybe (Left "No target address in current contet") Right . targetAddr
+getTargetAddr = fromEither . maybe (Left "No target address in current context") Right . targetAddr
 
 getTargetKey :: Context -> P2P AESKey
-getTargetKey = fromEither . maybe (Left "No target key in current contet") Right . targetKey
+getTargetKey = fromEither . maybe (Left "No target key in current context") Right . targetKey
+
+getLastField :: Context -> P2P BS.ByteString
+getLastField = fromEither . maybe (Left "No previously serialized field") Right . lastField
 
 -- Helper functions
 
@@ -121,3 +137,8 @@ encDouble = fromLazy . runPut . putFloat64le
 
 decDouble :: BS.ByteString -> Double
 decDouble = runGet getFloat64le . toLazy
+
+-- Higher order composition
+
+(.:) = (.).(.)
+(.::) = (.:).(.:)

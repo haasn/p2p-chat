@@ -4,8 +4,9 @@ import P2P.Instances
 import P2P.Util
 
 import Control.Monad (join)
+import Control.Monad.Trans (liftIO)
 
-import Control.Monad.State.Strict (get, evalStateT)
+import Control.Monad.State.Strict (get, put, evalStateT)
 import Control.Monad.Error (runErrorT)
 
 import Crypto.Random (newGenIO, SystemRandom)
@@ -14,12 +15,21 @@ import Codec.Crypto.RSA (generateKeyPair)
 import qualified Data.Map as Map
 
 roundCheck :: (Serializable a, Eq a) => a -> P2P Bool
-roundCheck a = (a==) `fmap` (encode a >>= decode)
+roundCheck a = do
+  enc <- encode a
+  dec <- decode enc
+
+  liftIO $ print enc
+  return $ a == dec
 
 tests :: P2P [Bool]
 tests = do
   state <- get
-  let ctx = context state
+  key   <- genAESKey
+  let ctx = (context state) { targetKey = Just key }
+  let pub = pubKey state
+  put $ state { context = ctx }
+
   sequence
     [ roundCheck $ (12345 :: Integer)
     , roundCheck $ Base64 (12345 :: Integer)
@@ -47,16 +57,27 @@ tests = do
 
     , roundCheck $ Target TGlobal Nothing
     , roundCheck $ Target Approx (Just (Base64 0.5))
-
+    , roundCheck $ Source (Base64 pub) Signature
+    , roundCheck $ SourceAddr (Base64 0.12345) Signature
     , roundCheck $ Version (Base64 1)
     , roundCheck $ Support (Base64 2)
-
     , roundCheck $ Drop (Base64 0.12345)
 
     -- Content tests
 
+    , roundCheck $ Message MGlobal (Base64 $ pack' "Hello, world!") Signature
+    , roundCheck $ Message Single  (Base64 $ pack' "Hello, world!") Signature
+
     , roundCheck $ WhoIs (Base64 "nand")
-    , roundCheck $ HereIs (Base64 $ pubKey state) (Base64 0.12345)
+    , roundCheck $ ThisIs (Base64 "nand") (Base64 pub)
+    , roundCheck $ NoExist (Base64 "nand")
+    , roundCheck $ Register (Base64 "nand") Signature
+    , roundCheck $ Exist (Base64 "nand")
+
+    , roundCheck $ WhereIs (Base64 pub)
+    , roundCheck $ HereIs (Base64 pub) (Base64 0.12345)
+    , roundCheck $ NotFound (Base64 pub)
+    , roundCheck $ Update (Base64 0.12345) Signature
     ]
 
 main = join (evalStateT (runErrorT tests) `fmap` newState) >>= print
@@ -73,5 +94,5 @@ newState = do
     , pubKey    = pub
     , privKey   = priv
     , randomGen = newgen
-    , context   = Context (Just pub) (Just 0.12345) Nothing
+    , context   = Context (Just pub) (Just 0.12345) Nothing Nothing
     }
