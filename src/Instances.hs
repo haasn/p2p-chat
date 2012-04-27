@@ -51,9 +51,10 @@ instance Serializable RSection where
       ("drop"      , [a  ]) -> Drop       <$> decode a
 
 instance Serializable CSection where
-  encode (Message t m s) = sec "MESSAGE" $ encode t : case t of
-    MGlobal -> [encode m, sign]
-    _       -> [encode (AES m), sign]
+  encode (Message t m s) = sec "MESSAGE" [encode t, m', sign]
+    where m' = case t of
+            MGlobal -> encode $ Base64 m
+            _       -> encode $ Base64 (AES m)
 
   encode (Key      p s) = sec "KEY"      [encode p, sign]
   encode (WhoIs      n) = sec "WHOIS"    [encode n]
@@ -83,9 +84,12 @@ instance Serializable CSection where
       ("message" , [t,m,s]) -> do
         mt <- decode t
         case mt of
-          MGlobal -> Message mt <$> decode m          <*> verify m s
+          MGlobal -> do
+            (Base64 msg) <- decode m
+            Message mt msg <$> verify m s
+
           _       -> do
-            (AES msg) <- decode m
+            (Base64 (AES msg)) <- decode m
             Message mt msg <$> verify m s
 
 -- Trivial data types
@@ -158,10 +162,7 @@ instance Serializable s => Serializable (Base64 s) where
   decode bs         = Base64 <$> (decode =<< fromEither (B64.decode bs))
 
 instance Serializable s => Serializable (RSA s) where
-  encode (RSA s) = do
-    pk <- gets context >>= getTargetId
-    inner <- encode s
-    withRandomGen (\gen -> return $ encryptRSA gen pk inner)
+  encode (RSA s) = join $ encryptRSA <$> (gets context >>= getTargetId) <*> encode s
 
   decode bs = do
     key <- gets privKey

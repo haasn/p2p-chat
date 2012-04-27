@@ -54,7 +54,7 @@ data RSection =
  deriving (Eq, Show)
 
 data CSection =
-    Message MessageType (Base64 ByteString) Signature -- This ByteString must be encrypted separately
+    Message MessageType ByteString Signature -- This ByteString must be encoded separately
   | Key (RSA64 PublicKey) Signature
 
   -- Id table interactions
@@ -82,6 +82,10 @@ type AES64 t = Base64 (AES t)
 
 data TargetType  = TGlobal | Exact | Approx deriving (Eq, Show, Read)
 data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
+
+-- Directional types for transfers
+
+data Direction = CW | CCW deriving (Eq, Show, Read)
 
 -- Safety types for Base64 and encryption; only used to enforce parsing/serializing rules
 

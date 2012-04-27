@@ -65,6 +65,13 @@ Network:
   data. For this purpose, DHT entries shall be announced to immediate
   neighbours upon change.
 
+- Said hashing function will operate solely on the ‘n’ component of the public
+  RSA key, ignoring the key size and exponent. The calculation is as follows:
+
+  hash(n) = (n % 2^64) / 2^64 = (n / 2^64) % 1
+
+  The calculation shall be calculated using 64-bit precision
+
 - To prevent catastrophic data loss upon global decay; “bootstrapper nodes”
   will also strive to keep a backup of the entire DHT table at all times in
   order to “seed” a new network from scratch, possibly by using a broadcast

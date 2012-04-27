@@ -2,6 +2,7 @@ import P2P
 import P2P.Types
 import P2P.Instances
 import P2P.Util
+import P2P.Math
 
 import Control.Monad (join)
 import Control.Monad.Trans (liftIO)
@@ -17,10 +18,13 @@ import qualified Data.Map as Map
 roundCheck :: (Serializable a, Eq a) => a -> P2P Bool
 roundCheck a = do
   enc <- encode a
+  liftIO $ print enc
   dec <- decode enc
 
-  liftIO $ print enc
   return $ a == dec
+
+showOutput :: String -> P2P Bool
+showOutput s = liftIO (print s) >> return True
 
 tests :: P2P [Bool]
 tests = do
@@ -32,6 +36,7 @@ tests = do
 
   sequence
     [ roundCheck $ (12345 :: Integer)
+
     , roundCheck $ Base64 (12345 :: Integer)
     , roundCheck $ RSA (12345 :: Integer)
     , roundCheck $ Base64 (RSA (12345 :: Integer))
@@ -51,7 +56,7 @@ tests = do
     , roundCheck $ (Nothing :: Maybe Integer)
     , roundCheck $ Just (12345 :: Integer)
 
-    , roundCheck $ pubKey state
+    , roundCheck $ pub
 
     -- Routing header tests
 
@@ -65,8 +70,8 @@ tests = do
 
     -- Content tests
 
-    , roundCheck $ Message MGlobal (Base64 $ pack' "Hello, world!") Signature
-    , roundCheck $ Message Single  (Base64 $ pack' "Hello, world!") Signature
+    , roundCheck $ Message MGlobal (pack' "Hello, world!") Signature
+    , roundCheck $ Message Single  (pack' "Hello, world!") Signature
 
     , roundCheck $ WhoIs (Base64 "nand")
     , roundCheck $ ThisIs (Base64 "nand") (Base64 pub)
@@ -78,9 +83,15 @@ tests = do
     , roundCheck $ HereIs (Base64 pub) (Base64 0.12345)
     , roundCheck $ NotFound (Base64 pub)
     , roundCheck $ Update (Base64 0.12345) Signature
+
+    -- Hashing checks
+    , showOutput $ show (hash pub)
     ]
 
-main = join (evalStateT (runErrorT tests) `fmap` newState) >>= print
+main = do
+  state <- newState
+  res   <- evalStateT (runErrorT tests) state
+  print res
 
 newState :: IO P2PState
 newState = do

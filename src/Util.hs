@@ -40,8 +40,9 @@ wrapLazy f = fromLazy . f . toLazy
 
 -- Wrapper functions for Codec.Crypto.RSA
 
-encryptRSA :: CryptoRandomGen g => g -> PublicKey -> ByteString -> (ByteString, g)
-encryptRSA g pk bs = let (res, g') = encrypt g pk (toLazy bs) in (fromLazy res, g')
+encryptRSA :: PublicKey -> ByteString -> P2P ByteString
+encryptRSA pk bs = withRandomGen $ \gen ->
+  let (res, g) = encrypt gen pk (toLazy bs) in return (fromLazy res, g)
 
 decryptRSA :: PrivateKey -> ByteString -> ByteString
 decryptRSA = wrapLazy . decrypt
