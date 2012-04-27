@@ -1,6 +1,6 @@
 module P2P.Types where
 
-import           Codec.Crypto.RSA (PublicKey, PrivateKey)
+import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
 import           Crypto.Random (SystemRandom)
 
 import           Control.Monad.State.Strict (StateT)
@@ -37,7 +37,7 @@ type AESKey     = ByteString
 
 -- Packet structure
 
-data Packet = Packet RoutingHeader Content
+data Packet = Packet RoutingHeader Content deriving (Eq, Show)
 
 type RoutingHeader = [RSection]
 type Content       = [CSection]
@@ -51,6 +51,7 @@ data RSection =
   | Version (Base64 Integer)
   | Support (Base64 Integer)
   | Drop (Base64 Address)
+ deriving (Eq, Show)
 
 data CSection =
     Message MessageType ByteString (Base64 Signature) -- This ByteString must be encoded separately
@@ -70,6 +71,7 @@ data CSection =
   | HereIs (Base64 Id) (Base64 Address)
   | NotFound (Base64 Id)
   | Update (Base64 Address) (Base64 Signature)
+ deriving (Eq, Show)
 
 -- Helpers
 
@@ -78,14 +80,14 @@ type AES64 t = Base64 (AES t)
 
 -- Target types
 
-data TargetType  = TGlobal | Exact | Approx
-data MessageType = MGlobal | Channel | Single
+data TargetType  = TGlobal | Exact | Approx deriving (Eq, Show, Read)
+data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
 
 -- Safety types for Base64 and encryption; only used to enforce parsing/serializing rules
 
-newtype Base64 t = Base64 t
-newtype AES t    = AES t
-newtype RSA t    = RSA t
+newtype Base64 t = Base64 t deriving (Eq, Show)
+newtype AES t    = AES t    deriving (Eq, Show)
+newtype RSA t    = RSA t    deriving (Eq, Show)
 
 -- Type class for serializing / deserializing
 
@@ -101,6 +103,12 @@ data Context = Context
   , targetId   :: Maybe Id
   , targetAddr :: Maybe Address
   }
+ deriving (Eq, Show)
+
+-- Needed to derive Eq on PublicKey
+
+instance Eq PublicKey where
+  (PublicKey a b c) == (PublicKey a' b' c') = and [a == a', b == b', c == c']
 
 -- Default context
 

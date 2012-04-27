@@ -1,9 +1,11 @@
 module P2P where
 
 import           Crypto.Random (SystemRandom)
-import           Control.Monad.State.Strict
+import           Control.Monad.State
 
 import           P2P.Types
+
+import Control.Monad.Error (throwError)
 
 -- Wrapper functions for the global state
 
@@ -13,4 +15,3 @@ withRandomGen f = do
   let (res, gen) = f $ randomGen state
   put $ state { randomGen = gen }
   return res
-

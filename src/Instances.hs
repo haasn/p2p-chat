@@ -154,7 +154,7 @@ instance Serializable s => Serializable (RSA s) where
 
   decode bs = do
     key <- gets privKey
-    decode $ decryptRSA key bs
+    RSA <$> decode (decryptRSA key bs)
 
 instance Serializable s => Serializable (AES s) where
   encode (AES s) = do
@@ -170,7 +170,7 @@ instance Serializable s => Serializable (AES s) where
     case keyAES c of
       Nothing -> throwError "No AES key in current context!"
       Just key -> do
-        decode $ decryptAES key bs
+        AES <$> decode (decryptAES key bs)
 
 -- Parameter grouping logic
 
