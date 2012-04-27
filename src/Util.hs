@@ -18,7 +18,8 @@ import           Data.Binary.IEEE754
 import           Data.Binary.Put (runPut)
 import           Data.Binary.Get (runGet)
 
-import           Codec.Crypto.RSA
+import           Codec.Crypto.RSA hiding (sign, verify)
+import qualified Codec.Crypto.RSA as RSA (sign, verify)
 import           Codec.Crypto.AES
 import           Crypto.Random (CryptoRandomGen, genBytes)
 
@@ -44,10 +45,10 @@ decryptRSA :: PrivateKey -> BS.ByteString -> BS.ByteString
 decryptRSA = wrapLazy . decrypt
 
 sign' :: PrivateKey -> BS.ByteString -> BS.ByteString
-sign' = wrapLazy . sign
+sign' = wrapLazy . RSA.sign
 
 verify' :: PublicKey -> BS.ByteString -> BS.ByteString -> Bool
-verify' pk msg sig = verify pk (toLazy msg) (toLazy sig)
+verify' pk msg sig = RSA.verify pk (toLazy msg) (toLazy sig)
 
 -- Wrapper functions for Codec.Crypto.AES
 
@@ -61,6 +62,17 @@ encryptAES g key bs = (iv `BS.append` crypt' CFB key iv Encrypt bs, g')
 decryptAES :: AESKey -> BS.ByteString -> BS.ByteString
 decryptAES key msg = crypt' CFB key iv Decrypt bs
   where (iv, bs) = BS.splitAt 16 msg
+
+-- Wrapper functions for the Context
+
+getTargetId :: Context -> P2P Id
+getTargetId = fromEither . maybe (Left "No target ID in current contet") Right . targetId
+
+getTargetAddr :: Context -> P2P Address
+getTargetAddr = fromEither . maybe (Left "No target address in current contet") Right . targetAddr
+
+getTargetKey :: Context -> P2P AESKey
+getTargetKey = fromEither . maybe (Left "No target key in current contet") Right . targetKey
 
 -- Helper functions
 

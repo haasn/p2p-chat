@@ -1,6 +1,7 @@
 module P2P.Types where
 
 import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
+
 import           Crypto.Random (SystemRandom)
 
 import           Control.Monad.State.Strict (StateT)
@@ -30,7 +31,6 @@ data P2PState = P2PState
 
 type Id         = PublicKey
 type Name       = String
-type Signature  = ByteString
 type Address    = Double
 type Connection = ()
 type AESKey     = ByteString
@@ -46,23 +46,23 @@ type Content       = [CSection]
 
 data RSection =
     Target TargetType (Maybe (Base64 Address))
-  | Source (Base64 Id) (Base64 Signature)
-  | SourceAddr (Base64 Address) (Base64 Signature)
+  | Source (Base64 Id) Signature
+  | SourceAddr (Base64 Address) Signature
   | Version (Base64 Integer)
   | Support (Base64 Integer)
   | Drop (Base64 Address)
  deriving (Eq, Show)
 
 data CSection =
-    Message MessageType ByteString (Base64 Signature) -- This ByteString must be encoded separately
-  | Key (RSA64 PublicKey) (Base64 Signature)
+    Message MessageType ByteString Signature -- This ByteString must be encoded separately
+  | Key (RSA64 PublicKey) Signature
 
   -- Id table interactions
 
   | WhoIs (Base64 Name)
   | ThisIs (Base64 Name) (Base64 Id)
   | NoExist (Base64 Name)
-  | Register (Base64 Name) (Base64 Signature)
+  | Register (Base64 Name) Signature
   | Exist (Base64 Name)
 
   -- Location table interactions
@@ -70,7 +70,7 @@ data CSection =
   | WhereIs (Base64 Id)
   | HereIs (Base64 Id) (Base64 Address)
   | NotFound (Base64 Id)
-  | Update (Base64 Address) (Base64 Signature)
+  | Update (Base64 Address) Signature
  deriving (Eq, Show)
 
 -- Helpers
@@ -89,6 +89,10 @@ newtype Base64 t = Base64 t deriving (Eq, Show)
 newtype AES t    = AES t    deriving (Eq, Show)
 newtype RSA t    = RSA t    deriving (Eq, Show)
 
+-- Dummy type for an RSA signature
+
+data Signature = Signature deriving (Eq, Show, Read)
+
 -- Type class for serializing / deserializing
 
 class Serializable s where
@@ -98,10 +102,9 @@ class Serializable s where
 -- Serialization context, used to pass along key information
 
 data Context = Context
-  { keyRSA     :: Maybe PublicKey
-  , keyAES     :: Maybe AESKey
-  , targetId   :: Maybe Id
+  { targetId   :: Maybe Id
   , targetAddr :: Maybe Address
+  , targetKey  :: Maybe AESKey
   }
  deriving (Eq, Show)
 
@@ -113,4 +116,4 @@ instance Eq PublicKey where
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing Nothing
+nullContext = Context Nothing Nothing Nothing

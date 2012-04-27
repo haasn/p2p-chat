@@ -73,5 +73,5 @@ newState = do
     , pubKey    = pub
     , privKey   = priv
     , randomGen = newgen
-    , context   = Context (Just pub) Nothing (Just pub) (Just 0.12345)
+    , context   = Context (Just pub) (Just 0.12345) Nothing
     }

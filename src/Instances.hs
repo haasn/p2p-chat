@@ -4,7 +4,7 @@ module P2P.Instances where
 
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
-import           Control.Applicative ((<$>), (<*>))
+import           Control.Applicative
 
 import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
 
@@ -27,8 +27,8 @@ import           P2P.Util
 
 instance Serializable RSection where
   encode (Target     t a) = sec "TARGET"     [encode t, encode a]
-  encode (Source     i s) = sec "SOURCE"     [encode i, encode s]
-  encode (SourceAddr a s) = sec "SOURCEADDR" [encode a, encode s]
+  encode (Source     i s) = sec "SOURCE"     [encode i, sign i]
+  encode (SourceAddr a s) = sec "SOURCEADDR" [encode a, sign a]
   encode (Version    v  ) = sec "VERSION"    [encode v]
   encode (Support    v  ) = sec "SUPPORT"    [encode v]
   encode (Drop       a  ) = sec "DROP"       [encode a]
@@ -42,37 +42,37 @@ instance Serializable RSection where
           TGlobal -> return $ Target TGlobal Nothing
           t       -> Target t <$> decode (head l)
 
-      ("source"    , [i,s]) -> Source     <$> decode i <*> decode s
-      ("sourceaddr", [a,s]) -> SourceAddr <$> decode a <*> decode s
+      ("source"    , [i,s]) -> Source     <$> decode i <*> verify i s
+      ("sourceaddr", [a,s]) -> SourceAddr <$> decode a <*> verify a s
       ("version"   , [v  ]) -> Version    <$> decode v
       ("support"   , [v  ]) -> Support    <$> decode v
       ("drop"      , [a  ]) -> Drop       <$> decode a
 
 instance Serializable CSection where
-  encode (Key      p s) = sec "KEY"      [encode p, encode s]
+  encode (Key      p s) = sec "KEY"      [encode p, sign p]
   encode (WhoIs      n) = sec "WHOIS"    [encode n]
   encode (ThisIs   n i) = sec "THISIS"   [encode n, encode i]
   encode (NoExist    n) = sec "NOEXIST"  [encode n]
-  encode (Register n s) = sec "REGISTER" [encode n, encode s]
+  encode (Register n s) = sec "REGISTER" [encode n, sign n]
   encode (Exist      n) = sec "EXIST"    [encode n]
   encode (WhereIs    i) = sec "WHEREIS"  [encode i]
   encode (HereIs   i a) = sec "HEREIS"   [encode i, encode a]
   encode (NotFound   i) = sec "NOTFOUND" [encode i]
-  encode (Update   a s) = sec "UPDATE"   [encode a, encode s]
+  encode (Update   a s) = sec "UPDATE"   [encode a, sign a]
 
   decode bs = do
     res <- parse bs
     case res of
-      ("key"     , [p,s]) -> Key      <$> decode p <*> decode s
+      ("key"     , [p,s]) -> Key      <$> decode p <*> verify p s
       ("whois"   , [n  ]) -> WhoIs    <$> decode n
       ("thisis"  , [n,i]) -> ThisIs   <$> decode n <*> decode i
       ("noexist" , [n  ]) -> NoExist  <$> decode n
-      ("register", [n,s]) -> Register <$> decode n <*> decode s
+      ("register", [n,s]) -> Register <$> decode n <*> verify n s
       ("exist"   , [n  ]) -> Exist    <$> decode n
       ("whereis" , [i  ]) -> WhereIs  <$> decode i
       ("hereis"  , [i,a]) -> HereIs   <$> decode i <*> decode a
       ("notfound", [i  ]) -> NotFound <$> decode i
-      ("update"  , [a,s]) -> Update   <$> decode a <*> decode s
+      ("update"  , [a,s]) -> Update   <$> decode a <*> verify a s
 
 -- Trivial data types
 
@@ -145,12 +145,9 @@ instance Serializable s => Serializable (Base64 s) where
 
 instance Serializable s => Serializable (RSA s) where
   encode (RSA s) = do
-    c <- gets context
-    case keyRSA c of
-      Nothing -> throwError "No public key in current context!"
-      Just pk -> do
-        inner <- encode s
-        withRandomGen (\gen -> encryptRSA gen pk inner)
+    pk <- gets context >>= getTargetId
+    inner <- encode s
+    withRandomGen (\gen -> encryptRSA gen pk inner)
 
   decode bs = do
     key <- gets privKey
@@ -158,19 +155,13 @@ instance Serializable s => Serializable (RSA s) where
 
 instance Serializable s => Serializable (AES s) where
   encode (AES s) = do
-    c <- gets context
-    case keyAES c of
-      Nothing -> throwError "No AES key in current context!"
-      Just key -> do
-        inner <- encode s
-        withRandomGen (\gen -> encryptAES gen key inner)
+    key <- gets context >>= getTargetKey
+    inner <- encode s
+    withRandomGen (\gen -> encryptAES gen key inner)
 
   decode bs = do
-    c <- gets context
-    case keyAES c of
-      Nothing -> throwError "No AES key in current context!"
-      Just key -> do
-        AES <$> decode (decryptAES key bs)
+    key <- gets context >>= getTargetKey
+    AES <$> decode (decryptAES key bs)
 
 -- Parameter grouping logic
 
@@ -207,3 +198,18 @@ instance Serializable Packet where
   decode bs = do
     let (rh, c) = BS.breakSubstring (pack' "\n\n") bs
     Packet <$> decode rh <*> decode c
+
+-- Helper functions for RSA serialization
+
+sign :: Serializable s => s -> P2P BS.ByteString
+sign s = sign' <$> gets privKey <*> encode s
+
+verify :: BS.ByteString -> BS.ByteString -> P2P Signature
+verify m s = do
+  m' <- decode m
+  (Base64 s') <- decode s
+  pk <- gets context >>= getTargetId
+
+  case verify' pk m' s' of
+    True  -> return Signature
+    False -> throwError "Signature does not match id"
