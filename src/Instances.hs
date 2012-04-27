@@ -215,7 +215,7 @@ instance Serializable Packet where
   encode (Packet rh c) = BS.concat <$> sequence [encode rh, return $ pack' "\n\n", encode c]
   decode bs = do
     let (rh, c) = BS.breakSubstring (pack' "\n\n") bs
-    Packet <$> decode rh <*> decode c
+    Packet <$> decode rh <*> decode (BS.drop 2 c) -- drop the \n\n too
 
 -- Helper functions for RSA serialization
 

@@ -17,12 +17,13 @@ type P2P = ErrorT String (StateT P2PState IO)
 -- Global state
 
 data P2PState = P2PState
-  { rightConn :: [Connection]
-  , leftConn  :: [Connection]
+  { cwConn    :: [Connection]
+  , ccwConn   :: [Connection]
   , keyTable  :: Map.Map Name Id
   , locTable  :: Map.Map Id Address
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
+  , homeAddr  :: Address
   , randomGen :: SystemRandom
   , context   :: Context
   }
@@ -32,8 +33,15 @@ data P2PState = P2PState
 type Id         = PublicKey
 type Name       = String
 type Address    = Double
-type Connection = ()
 type AESKey     = ByteString
+
+-- Connection type
+
+data Connection = Connection
+  { socket     :: ()
+  , remoteAddr :: Address
+  , remoteId   :: Id
+  }
 
 -- Packet structure
 

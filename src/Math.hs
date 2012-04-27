@@ -19,3 +19,7 @@ dir from to
   | x > 0 && x < 0.5 = CCW
   | otherwise        = CW
     where x = to - from + 0.5
+
+dist :: Address -> Address -> Double
+dist a b = min d (1-d)
+  where d = abs (a - b)

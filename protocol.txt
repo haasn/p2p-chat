@@ -32,6 +32,8 @@ IDs (public keys) will be encoded as followed:
 
 All three fields are encoded as Integers (see above).
 
+Text will be encoded as UTF-8 in all scenarios.
+
 Legend:
 
   > NAME
@@ -186,6 +188,9 @@ The content may content the following sections:
   A simple textual message. “TYPE” may be “GLOBAL”, “CHANNEL” or “SINGLE”.
   SINGLE and CHANNEL messages will contain encrypted DATA, GLOBAL messages
   will not.
+
+  CHANNEL messages will be encrypted using a key obtained from running the
+  SHA-256 function on the intended channel name.
 
   Examples:
 

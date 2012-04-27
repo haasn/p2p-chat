@@ -22,6 +22,8 @@ import           Data.Binary.Get (runGet)
 import           Codec.Crypto.RSA hiding (sign, verify)
 import qualified Codec.Crypto.RSA as RSA (sign, verify)
 import           Codec.Crypto.AES
+import           Codec.Digest.SHA (Length(..))
+import qualified Codec.Digest.SHA as SHA
 import           Crypto.Random (CryptoRandomGen, genBytes)
 
 import           P2P
@@ -64,6 +66,11 @@ encryptAES key bs = withRandomGen $ \gen ->
 decryptAES :: AESKey -> ByteString -> ByteString
 decryptAES key msg = crypt' CFB key iv Decrypt bs
   where (iv, bs) = BS.splitAt 16 msg
+
+-- Wrapper functions for Codec.Digest.SHA
+
+chanKey :: Name -> ByteString
+chanKey = SHA.hash SHA256 . encodeUtf8 . fromString
 
 -- Wrapper functions for random key generation
 

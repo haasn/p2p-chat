@@ -6,8 +6,7 @@ import           Control.Monad.State.Strict
 import           Data.ByteString (ByteString)
 
 import           P2P.Types
-
-import Control.Monad.Error (throwError)
+import           P2P.Math
 
 -- Wrapper functions for the global state
 
@@ -17,6 +16,22 @@ withRandomGen f = do
   (res, gen) <- f $ randomGen state
   put $ state { randomGen = gen }
   return res
+
+-- Connection functions
+
+addConnection :: Connection -> P2P ()
+addConnection = modify . insertConnection
+
+insertConnection :: Connection -> P2PState -> P2PState
+insertConnection c st =
+  case dir (homeAddr st) (remoteAddr c) of
+    CW  -> st { cwConn  = insert c (cwConn  st) }
+    CCW -> st { ccwConn = insert c (ccwConn st) }
+  where
+    insert :: Connection -> [Connection] -> [Connection]
+    insert c cs = let (l,g) = span (\p -> dista p < distb) cs in l ++ [c] ++ g
+      where dista p = dist (homeAddr st) (remoteAddr p)
+            distb   = dist (homeAddr st) (remoteAddr c)
 
 -- Context functions
 

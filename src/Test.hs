@@ -4,6 +4,8 @@ import P2P.Instances
 import P2P.Util
 import P2P.Math
 
+import Data.String (fromString)
+
 import Control.Monad (join)
 import Control.Monad.Trans (liftIO)
 
@@ -18,13 +20,14 @@ import qualified Data.Map as Map
 roundCheck :: (Serializable a, Eq a) => a -> P2P Bool
 roundCheck a = do
   enc <- encode a
-  liftIO $ print enc
+  liftIO $ putStrLn (read (show enc) :: String)
+  liftIO $ putStrLn "-----"
   dec <- decode enc
 
   return $ a == dec
 
 showOutput :: String -> P2P Bool
-showOutput s = liftIO (print s) >> return True
+showOutput s = liftIO (putStrLn s >> putStrLn "-----") >> return True
 
 tests :: P2P [Bool]
 tests = do
@@ -38,12 +41,12 @@ tests = do
     [ roundCheck $ (12345 :: Integer)
 
     , roundCheck $ Base64 (12345 :: Integer)
-    , roundCheck $ RSA (12345 :: Integer)
     , roundCheck $ Base64 (RSA (12345 :: Integer))
+    , roundCheck $ Base64 (AES (12345 :: Integer))
     , roundCheck $ pack' "Hello, world!"
 
     , roundCheck $ "Hello, world!"
-    , roundCheck $ (0.12345 :: Double)
+    , roundCheck $ Base64 (0.12345 :: Double)
 
     , roundCheck $ TGlobal
     , roundCheck $ Exact
@@ -56,7 +59,7 @@ tests = do
     , roundCheck $ (Nothing :: Maybe Integer)
     , roundCheck $ Just (12345 :: Integer)
 
-    , roundCheck $ pub
+    , roundCheck $ Base64 pub
 
     -- Routing header tests
 
@@ -86,6 +89,11 @@ tests = do
 
     -- Hashing checks
     , showOutput $ show (hash pub)
+    , roundCheck $ Base64 (chanKey "#foobar")
+
+    -- Full body packet test
+
+    , roundCheck $ Packet [Source (Base64 pub) Signature, Target TGlobal Nothing] [WhoIs (Base64 "nand"), Exist (Base64 "xor")]
     ]
 
 main = do
@@ -98,12 +106,13 @@ newState = do
   gen <- newGenIO :: IO SystemRandom
   let (pub, priv, newgen) = generateKeyPair gen 2048
   return P2PState
-    { rightConn = []
-    , leftConn  = []
+    { cwConn    = []
+    , ccwConn   = []
     , keyTable  = Map.empty
     , locTable  = Map.empty
     , pubKey    = pub
     , privKey   = priv
+    , homeAddr  = 0.1234
     , randomGen = newgen
     , context   = Context (Just pub) (Just 0.12345) Nothing Nothing
     }
