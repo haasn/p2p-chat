@@ -8,7 +8,7 @@ import Crypto.Random (newGenIO, SystemRandom)
 import Data.Maybe (fromJust)
 import Data.List (find)
 import Data.Tuple (swap)
-import Data.ByteString (ByteString, hGetSome, hGetLine)
+import Data.ByteString (ByteString, hGetSome, hGetLine, hPut)
 import qualified Data.Map as Map
 
 import Control.Applicative
@@ -75,7 +75,7 @@ process h host bs = do
   -- Check for no route packets
   if any isIdentify rh || any isIAm rh
     then mapM_ (prolog h host) rh
-    else getConnection h >>= route p
+    else getConnection h >>= route bs p
  where
   getConnection :: Handle -> P2P Connection
   getConnection h = do
@@ -94,7 +94,11 @@ close h = do
 -- Evaluate a pre-Connection package
 
 prolog :: Handle -> HostName -> RSection -> P2P ()
-prolog h host Identify     = return () -- TODO: Send him an IAM
+prolog h host Identify = do
+  myId   <- gets pubKey
+  myAddr <- gets homeAddr
+  send' h $ Packet [IAm (Base64 myId) (Base64 myAddr)] []
+
 prolog h host (IAm (Base64 id) (Base64 adr)) = addConnection h host id adr
 
 -- Ignore everything else
@@ -102,8 +106,8 @@ prolog _ _ _ = return ()
 
 -- Route a post-Connection package
 
-route :: Packet -> Connection -> P2P ()
-route (Packet rh c) conn = do
+route :: ByteString -> Packet -> Connection -> P2P ()
+route bs (Packet rh c) conn = do
   -- Debugging purposes
   liftIO . putStrLn $ show (Packet rh c)
 
@@ -115,7 +119,10 @@ route (Packet rh c) conn = do
 
   case tt of
     TGlobal -> do
-      unless (id == myId) $ return () -- send to first CW connection
+      unless (id == myId) $ do
+        -- send to next CW connection
+        conn <- head <$> gets cwConn
+        sendRaw conn bs
 
     Exact -> do
       let Just (Base64 adr) = a
@@ -145,3 +152,18 @@ withMVar m a = modifyMVar_ m $ \st -> do
     _      -> return ()
   return s
 
+-- Send a packet
+
+send :: Connection -> Packet -> P2P ()
+send conn packet = encode packet >>= sendRaw conn
+
+send' :: Handle -> Packet -> P2P ()
+send' h packet = encode packet >>= sendRaw' h
+
+sendRaw :: Connection -> ByteString -> P2P ()
+sendRaw = sendRaw' . socket
+
+sendRaw' :: Handle -> ByteString -> P2P ()
+sendRaw' h bs = do
+  liftIO $ hPut h bs
+  liftIO $ hFlush h
