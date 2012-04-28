@@ -1,12 +1,18 @@
 module P2P where
 
+import           Network (HostName)
+
 import           Crypto.Random (SystemRandom)
 import           Control.Monad.State.Strict
 
+import           Data.Maybe (isJust)
 import           Data.ByteString (ByteString)
+import           Data.List (find)
 
 import           P2P.Types
 import           P2P.Math
+
+import           GHC.IO.Handle
 
 -- Wrapper functions for the global state
 
@@ -19,8 +25,33 @@ withRandomGen f = do
 
 -- Connection functions
 
-addConnection :: Connection -> P2P ()
-addConnection = modify . insertConnection
+addConnection :: Handle -> HostName -> Id -> Address -> P2P ()
+addConnection h host id adr = do
+  exist <- findDirection h
+  case exist of
+    Nothing  -> modify (insertConnection $ Connection h id adr host)
+    Just CW  -> modify (\st -> st { cwConn  = updateConn h id adr $ cwConn  st })
+    Just CCW -> modify (\st -> st { ccwConn = updateConn h id adr $ ccwConn st })
+
+delConnection :: Handle -> P2P ()
+delConnection h = do
+  modify $ \st -> st { cwConn = del (cwConn st), ccwConn = del (ccwConn st) }
+   where del = filter (not . (== h) . socket)
+
+findDirection :: Handle -> P2P (Maybe Direction)
+findDirection h = do
+  state <- get
+  case find (\c -> socket c == h) (cwConn  state) of
+    Just _ -> return (Just CW)
+  case find (\c -> socket c == h) (ccwConn state) of
+    Just _ -> return (Just CCW)
+
+  return Nothing
+
+findConnection :: Handle -> P2P (Maybe Connection)
+findConnection h = do
+  state <- get
+  return $ find (\c -> socket c == h) (cwConn state ++ ccwConn state)
 
 insertConnection :: Connection -> P2PState -> P2PState
 insertConnection c st =
@@ -32,6 +63,12 @@ insertConnection c st =
     insert cs = let (l,g) = span (\p -> dista p < distb) cs in l ++ [c] ++ g
       where dista p = dist (homeAddr st) (remoteAddr p)
             distb   = dist (homeAddr st) (remoteAddr c)
+
+updateConn :: Handle -> Id -> Address -> [Connection] -> [Connection]
+updateConn _ _ _ [] = []
+updateConn h id adr (x:xs)
+  | socket x == h = x { remoteId = id, remoteAddr = adr } : xs
+  | otherwise     = x : updateConn h id adr xs
 
 -- Context functions
 
@@ -47,14 +84,34 @@ modifyContext f = withContext $ setContext . f
 resetContext :: P2P ()
 resetContext = setContext nullContext
 
-setTargetId :: Id -> P2P ()
-setTargetId i = modifyContext $ \ctx -> ctx { targetId = Just i }
+setContextId :: Id -> P2P ()
+setContextId i = modifyContext $ \ctx -> ctx { ctxId = Just i }
 
-setTargetAddr :: Address -> P2P ()
-setTargetAddr a = modifyContext $ \ctx -> ctx { targetAddr = Just a }
+setContextAddr :: Address -> P2P ()
+setContextAddr a = modifyContext $ \ctx -> ctx { ctxAddr = Just a }
 
-setTargetKey :: AESKey -> P2P ()
-setTargetKey k = modifyContext $ \ctx -> ctx { targetKey = Just k }
+setContextKey :: AESKey -> P2P ()
+setContextKey k = modifyContext $ \ctx -> ctx { ctxKey = Just k }
+
+setIsMe :: P2P ()
+setIsMe = modifyContext $ \ctx -> ctx { ctxIsMe = True }
+
+getIsMe :: P2P Bool
+getIsMe = withContext (return . ctxIsMe)
 
 setLastField :: ByteString -> P2P ()
 setLastField f = modifyContext $ \ctx -> ctx { lastField = Just f }
+
+-- Packet processing functions
+
+isTarget (Target _ _) = True
+isTarget _            = False
+
+isSource (Source _ _) = True
+isSource _            = False
+
+isIdentify Identify = True
+isIdentify _        = False
+
+isIAm (IAm _ _) = True
+isIAm _         = False

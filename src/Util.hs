@@ -87,14 +87,14 @@ genAESKey = withRandomGen $ \gen ->
 
 -- Wrapper functions for the Context
 
-getTargetId :: Context -> P2P Id
-getTargetId = fromEither . maybe (Left "No target ID in current context") Right . targetId
+getContextId :: Context -> P2P Id
+getContextId = fromEither . maybe (Left "No target ID in current context") Right . ctxId
 
-getTargetAddr :: Context -> P2P Address
-getTargetAddr = fromEither . maybe (Left "No target address in current context") Right . targetAddr
+getContextAddr :: Context -> P2P Address
+getContextAddr = fromEither . maybe (Left "No target address in current context") Right . ctxAddr
 
-getTargetKey :: Context -> P2P AESKey
-getTargetKey = fromEither . maybe (Left "No target key in current context") Right . targetKey
+getContextKey :: Context -> P2P AESKey
+getContextKey = fromEither . maybe (Left "No target key in current context") Right . ctxKey
 
 getLastField :: Context -> P2P ByteString
 getLastField = fromEither . maybe (Left "No previously serialized field") Right . lastField
@@ -113,9 +113,9 @@ fromEither' :: Show s => Either s r -> P2P r
 fromEither' (Left s)  = throwError $ show s
 fromEither' (Right r) = return r
 
-isJust :: Maybe a -> Bool
-isJust (Just _) = True
-isJust Nothing  = False
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _        = False
 
 pack' :: String -> ByteString
 pack' = encodeUtf8 . fromString

@@ -18,8 +18,8 @@ roundCheck :: (Serializable a, Eq a) => a -> P2P Bool
 roundCheck a = do
   enc <- encode a
   liftIO $ putStrLn (read (show enc) :: String)
-  liftIO $ putStrLn "-----"
   dec <- decode enc
+  liftIO $ putStrLn "-----"
 
   return $ a == dec
 
@@ -67,6 +67,8 @@ tests = do
     , roundCheck $ Version (Base64 1)
     , roundCheck $ Support (Base64 2)
     , roundCheck $ Drop (Base64 0.12345)
+    , roundCheck $ Identify
+    , roundCheck $ IAm (Base64 pub) (Base64 0.12345)
 
     -- Content tests
 
@@ -106,8 +108,9 @@ newState = do
   return P2PState
     { cwConn    = []
     , ccwConn   = []
-    , keyTable  = Map.empty
+    , idTable   = Map.empty
     , locTable  = Map.empty
+    , keyTable  = Map.empty
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.1234

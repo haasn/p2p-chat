@@ -32,6 +32,8 @@ instance Serializable RSection where
   encode (Version    v  ) = sec "VERSION"    [encode v]
   encode (Support    v  ) = sec "SUPPORT"    [encode v]
   encode (Drop       a  ) = sec "DROP"       [encode a]
+  encode (IAm        i a) = sec "IAM"        [encode i, encode a]
+  encode (Identify      ) = sec "IDENTIFY"   []
 
   decode bs = do
     res <- parse bs
@@ -47,6 +49,10 @@ instance Serializable RSection where
       ("version"   , [v  ]) -> Version    <$> decode v
       ("support"   , [v  ]) -> Support    <$> decode v
       ("drop"      , [a  ]) -> Drop       <$> decode a
+      ("iam"       , [i,a]) -> IAm        <$> decode i <*> decode a
+      ("identify"  , [   ]) -> return Identify
+
+      _ -> throwError "RSection failed to parse"
 
 instance Serializable CSection where
   encode (Message t m s) = sec "MESSAGE" [encode t, m', sign]
@@ -89,6 +95,8 @@ instance Serializable CSection where
           _       -> do
             (Base64 (AES msg)) <- decode m
             Message mt msg <$> verify m s
+
+      _ -> throwError "CSection failed to parse"
 
 -- Trivial data types
 
@@ -160,17 +168,17 @@ instance Serializable s => Serializable (Base64 s) where
   decode bs         = Base64 <$> (decode =<< fromEither (B64.decode bs))
 
 instance Serializable s => Serializable (RSA s) where
-  encode (RSA s) = join $ encryptRSA <$> (gets context >>= getTargetId) <*> encode s
+  encode (RSA s) = join $ encryptRSA <$> (gets context >>= getContextId) <*> encode s
 
   decode bs = do
     key <- gets privKey
     RSA <$> decode (decryptRSA key bs)
 
 instance Serializable s => Serializable (AES s) where
-  encode (AES s) = join $ encryptAES <$> (gets context >>= getTargetKey) <*> encode s
+  encode (AES s) = join $ encryptAES <$> (gets context >>= getContextKey) <*> encode s
 
   decode bs = do
-    key <- gets context >>= getTargetKey
+    key <- gets context >>= getContextKey
     AES <$> decode (decryptAES key bs)
 
 -- Parameter grouping logic
@@ -213,7 +221,17 @@ instance Serializable Packet where
   encode (Packet rh c) = BS.concat <$> sequence [encode rh, return $ pack' "\n\n", encode c]
   decode bs = do
     let (rh, c) = BS.breakSubstring (pack' "\n\n") bs
-    Packet <$> decode rh <*> decode (BS.drop 2 c) -- drop the \n\n too
+    -- Make sure the context is always clean before decoding
+    resetContext
+    header <- decode rh
+    -- Check for presence of Source and Target, alternatively Identify or IAm
+    if any isSource header && any isTarget header || any isIdentify header || any isIAm header
+      then do
+        isme <- getIsMe
+        if isme
+          then Packet <$> pure header <*> decode (BS.drop 2 c) -- drop the \n\n too
+          else return $ Packet header []
+      else throwError "Source or Target not present and not a pre-route packet, ignoring"
 
 -- Helper functions for RSA serialization
 
@@ -224,7 +242,7 @@ verify :: ByteString -> ByteString -> P2P Signature
 verify m s = do
   m' <- decode m
   (Base64 s') <- decode s
-  pk <- gets context >>= getTargetId
+  pk <- gets context >>= getContextId
 
   if verify' pk m' s'
     then return Signature

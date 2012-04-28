@@ -1,5 +1,7 @@
 module P2P.Types where
 
+import           Network (HostName)
+
 import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
 
 import           Crypto.Random (SystemRandom)
@@ -8,7 +10,10 @@ import           Control.Monad.State.Strict (StateT)
 import           Control.Monad.Error (ErrorT)
 
 import           Data.ByteString (ByteString)
+import           Data.Map (Map)
 import qualified Data.Map as Map
+
+import           GHC.IO.Handle (Handle)
 
 -- Global monad
 
@@ -19,8 +24,9 @@ type P2P = ErrorT String (StateT P2PState IO)
 data P2PState = P2PState
   { cwConn    :: [Connection]
   , ccwConn   :: [Connection]
-  , keyTable  :: Map.Map Name Id
-  , locTable  :: Map.Map Id Address
+  , idTable   :: Map Name Id
+  , locTable  :: Map Id Address
+  , keyTable  :: Map Id AESKey
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
   , homeAddr  :: Address
@@ -38,9 +44,10 @@ type AESKey     = ByteString
 -- Connection type
 
 data Connection = Connection
-  { socket     :: ()
-  , remoteAddr :: Address
+  { socket     :: Handle
   , remoteId   :: Id
+  , remoteAddr :: Address
+  , hostName   :: HostName
   }
 
 -- Packet structure
@@ -59,6 +66,8 @@ data RSection =
   | Version (Base64 Integer)
   | Support (Base64 Integer)
   | Drop (Base64 Address)
+  | Identify
+  | IAm (Base64 Id) (Base64 Address)
  deriving (Eq, Show)
 
 data CSection =
@@ -114,10 +123,11 @@ class Serializable s where
 -- Serialization context, used to pass along key information
 
 data Context = Context
-  { targetId   :: Maybe Id
-  , targetAddr :: Maybe Address
-  , targetKey  :: Maybe AESKey
+  { ctxId      :: Maybe Id
+  , ctxAddr    :: Maybe Address
+  , ctxKey     :: Maybe AESKey
   , lastField  :: Maybe ByteString
+  , ctxIsMe    :: Bool
   }
  deriving (Eq, Show)
 
@@ -130,4 +140,4 @@ instance Eq PublicKey where
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing Nothing
+nullContext = Context Nothing Nothing Nothing Nothing False

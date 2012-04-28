@@ -165,13 +165,35 @@ The routing header may contain the following sections:
   > DROP {0.2129}
 
 
+  IDENTIFY section:
+
+  > IDENTIFY
+
+  A special identification section. This section must never be routed to other
+  peers, it is solely for identifying new peers after connecting to them.
+
+  The receiving peer must reply with an IAM section.
+
+
+  IAM section:
+
+  > IAM {ID} {ADDRESS}
+
+  A special identification section. This section must never be routed to other
+  peers, it is solely for identifying new peers after connectiong to them.
+
+
 The routing header must adhere to the following rules:
 
-- The TARGET section must be present.
-- The SOURCE section must be present.
+- The TARGET section must be present (unless type is IDENTIFY/IAM)
+- The SOURCE section must be present (unless type is IDENTIFy/IAM)
+- If the packet contains IDENTIFY or IAM, it must never be routed.
 
 Any packets not complying with these restrictions shall be discarded
 immediately and without further notice.
+
+Any packets received before an “IAM” shall be ignored silently and responded
+to with an “IDENTIFY”. A peer must identify itself before it can send packets.
 
 
 Content:
