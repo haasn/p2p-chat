@@ -34,6 +34,9 @@ data P2PState = P2PState
   , context   :: Context
   }
 
+instance Show P2PState where
+  show p = show (cwConn p, ccwConn p, idTable p, locTable p, keyTable p, pubKey p, privKey p, homeAddr p, context p)
+
 -- Friendly types
 
 type Id         = PublicKey
@@ -49,6 +52,7 @@ data Connection = Connection
   , remoteAddr :: Address
   , hostName   :: HostName
   }
+ deriving (Show)
 
 -- Packet structure
 
@@ -72,7 +76,7 @@ data RSection =
 
 data CSection =
     Message MessageType ByteString Signature -- This ByteString must be encoded separately
-  | Key (RSA64 PublicKey) Signature
+  | Key (RSA64 AESKey) Signature
 
   -- Id table interactions
 
@@ -134,8 +138,13 @@ data Context = Context
 -- Needed to derive Eq on PublicKey
 
 instance Eq PublicKey where
-  (PublicKey a b c) == (PublicKey a' b' c') =
-    (a == a') && (b == b') && (c == c')
+  a == b = case a `compare` b of
+    EQ -> True
+    _  -> False
+
+instance Ord PublicKey where
+  compare (PublicKey a b c) (PublicKey a' b' c') =
+    compare [fromIntegral a,b,c] [fromIntegral a',b',c']
 
 -- Default context
 

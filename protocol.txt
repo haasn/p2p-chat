@@ -311,7 +311,8 @@ The content may content the following sections:
 
   > UPDATE {ADDRESS} {ADDRESS.SIGNATURE}
 
-  Update or insert the sender's location in the location table (see: SOURCE)
+  Update or insert the sender's location in the location table. Reply is
+  HEREIS with the new values on success.
 
   Examples:
 
@@ -324,7 +325,8 @@ The content may content the following sections:
 
   > REGISTER {NAME} {NAME.SIGNATURE}
 
-  Register the sender into the id table, if not already existant.
+  Register the sender into the id table, if not already existant. Reply is
+  THISIS with the inserted values on success, and EXIST on failure.
 
   Examples:
 

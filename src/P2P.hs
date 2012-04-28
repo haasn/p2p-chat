@@ -4,7 +4,10 @@ import           Network (HostName)
 
 import           Crypto.Random (SystemRandom)
 import           Control.Monad.State.Strict
+import           Control.Monad (when, unless)
 
+import qualified Data.Map as Map
+import qualified Data.Foldable as F (forM_)
 import           Data.Maybe (isJust)
 import           Data.ByteString (ByteString)
 import           Data.List (find)
@@ -42,11 +45,10 @@ findDirection :: Handle -> P2P (Maybe Direction)
 findDirection h = do
   state <- get
   case find (\c -> socket c == h) (cwConn  state) of
-    Just _ -> return (Just CW)
-  case find (\c -> socket c == h) (ccwConn state) of
-    Just _ -> return (Just CCW)
-
-  return Nothing
+    Just _  -> return (Just CW)
+    Nothing -> case find (\c -> socket c == h) (ccwConn state) of
+      Just _  -> return (Just CCW)
+      Nothing -> return Nothing
 
 findConnection :: Handle -> P2P (Maybe Connection)
 findConnection h = do
@@ -101,6 +103,27 @@ getIsMe = withContext (return . ctxIsMe)
 
 setLastField :: ByteString -> P2P ()
 setLastField f = modifyContext $ \ctx -> ctx { lastField = Just f }
+
+loadContext :: Id -> P2P ()
+loadContext id = do
+  state <- get
+  setContextId id
+  Map.lookup id (keyTable state) `F.forM_` setContextKey
+  Map.lookup id (locTable state) `F.forM_` setContextAddr
+
+-- Map processing
+
+insertAddr :: Id -> Address -> P2P ()
+insertAddr id addr = modify $ \st -> st { locTable = Map.insert id addr (locTable st) }
+
+forgetAddr :: Address -> P2P ()
+forgetAddr addr = modify $ \st -> st { locTable = Map.filter (/= addr) (locTable st) }
+
+insertId :: Name -> Id -> P2P ()
+insertId name id = modify $ \st -> st { idTable = Map.insert name id (idTable st) }
+
+insertKey :: Id -> AESKey -> P2P ()
+insertKey id key = modify $ \st -> st { keyTable = Map.insert id key (keyTable st) }
 
 -- Packet processing functions
 

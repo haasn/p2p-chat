@@ -2,22 +2,27 @@
 
 module P2P.Instances where
 
-import           Control.Monad (join)
+import           Control.Monad (join, when, unless)
 import           Control.Monad.Error (throwError)
-import           Control.Monad.State.Strict (gets)
+import           Control.Monad.State.Strict (get, gets, modify)
+import           Control.Monad.Trans (liftIO)
 import           Control.Applicative
 
 import           Codec.Crypto.RSA (PublicKey(..))
 
-import           Data.ByteString (ByteString)
+import           Data.ByteString (ByteString, hPut)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
 import           Data.String (fromString)
 import           Data.Char (toLower)
 
+import qualified Data.Map as Map
+
 import           Data.Text (Text, unpack)
 import           Data.Text.Encoding
+
+import           GHC.IO.Handle (Handle, hFlush)
 
 import           P2P
 import           P2P.Types
@@ -41,16 +46,55 @@ instance Serializable RSection where
       ("target", tt:l) -> do
         tt' <- decode tt
         case tt' of
-          TGlobal -> return $ Target TGlobal Nothing
+          TGlobal -> setIsMe >> return (Target TGlobal Nothing)
           t       -> Target t <$> decode (head l)
+          -- FIXME: Check and set ctxIsMe
 
-      ("source"    , [i,s]) -> Source     <$> decode i <*> verify i s
-      ("sourceaddr", [a,s]) -> SourceAddr <$> decode a <*> verify a s
-      ("version"   , [v  ]) -> Version    <$> decode v
-      ("support"   , [v  ]) -> Support    <$> decode v
-      ("drop"      , [a  ]) -> Drop       <$> decode a
-      ("iam"       , [i,a]) -> IAm        <$> decode i <*> decode a
-      ("identify"  , [   ]) -> return Identify
+      ("source", [i,s]) -> do
+        s <- verify i s
+        i@(Base64 id) <- decode i
+        loadContext id
+        return $ Source i s
+
+      ("sourceaddr", [a,s]) -> do
+        s <- verify a s
+        a@(Base64 addr) <- decode a
+        setContextAddr addr
+        return $ SourceAddr a s
+
+      ("version", [v]) -> do
+        v@(Base64 ver) <- decode v
+        when (ver > 1) $ throwError "Packet version unsupported, ignoring"
+        return $ Version v
+
+      ("support", [v]) -> do
+        v@(Base64 ver) <- decode v
+        when (ver < 1) $ throwError "Client does not support minimum packet ver, dropping"
+        return $ Support v
+
+      ("drop", [a]) -> do
+        a@(Base64 addr) <- decode a
+        forgetAddr addr
+        return $ Drop a
+
+      ("iam", [i,a]) -> do
+        i@(Base64 id)   <- decode i
+        a@(Base64 addr) <- decode a
+        setContextId id
+        setContextAddr addr
+        insertAddr id addr
+        return $ IAm i a
+
+      -- This is processed separately
+      ("identify", []) -> return Identify
+
+      -- Test “functions” for debugging
+      ("test.dump", []) -> do
+        get >>= throwError . show
+
+      ("test.global", []) -> do
+        sendGlobal [mkMessage MGlobal "Hello, world!"]
+        throwError "test.global"
 
       _ -> throwError "RSection failed to parse"
 
@@ -74,27 +118,82 @@ instance Serializable CSection where
   decode bs = do
     res <- parse bs
     case res of
-      ("key"     , [p,s]) -> Key      <$> decode p <*> verify p s
-      ("whois"   , [n  ]) -> WhoIs    <$> decode n
-      ("thisis"  , [n,i]) -> ThisIs   <$> decode n <*> decode i
-      ("noexist" , [n  ]) -> NoExist  <$> decode n
-      ("register", [n,s]) -> Register <$> decode n <*> verify n s
-      ("exist"   , [n  ]) -> Exist    <$> decode n
-      ("whereis" , [i  ]) -> WhereIs  <$> decode i
-      ("hereis"  , [i,a]) -> HereIs   <$> decode i <*> decode a
-      ("notfound", [i  ]) -> NotFound <$> decode i
-      ("update"  , [a,s]) -> Update   <$> decode a <*> verify a s
+      ("key", [k,s]) -> do
+        s <- verify k s
+        k@(Base64 (RSA key)) <- decode k
+        id <- getContextId
+        insertKey id key
+        return $ Key k s
+
+      -- ID table interactions
+
+      ("whois", [n]) -> do
+        n@(Base64 name) <- decode n
+        idt <- gets idTable
+        case Map.lookup name idt of
+          Nothing -> return () -- TODO: Reply with NOEXIST
+          Just id -> return () -- TODO: Reply with THISIS
+        return $ WhoIs n
+
+      ("thisis", [n,i]) -> do
+        n@(Base64 name) <- decode n
+        i@(Base64 id)   <- decode i
+        insertId name id
+        return $ ThisIs n i
+
+      ("noexist", [n]) -> NoExist  <$> decode n
+
+      ("register", [n,s]) -> do
+        s <- verify n s
+        n@(Base64 name) <- decode n
+        id <- getContextId
+
+        -- See if name exists
+        idt <- gets idTable
+        case Map.lookup name idt of
+          Nothing -> insertId name id -- TODO: Reply with THISIS
+          Just _  -> return () -- TODO: Reply with EXIST
+        return $ Register n s
+
+      ("exist", [n]) -> Exist <$> decode n
+
+      -- Location table interactions
+
+      ("whereis", [i]) -> do
+        i@(Base64 id) <- decode i
+        loct <- gets locTable
+        case Map.lookup id loct of
+          Nothing -> return ()  -- TODO: Reply with NOTFOUND
+          Just loc -> return () -- TODO: Reply with HEREIS
+        return $ WhereIs i
+
+      ("hereis", [i,a]) -> do
+        i@(Base64 id)   <- decode i
+        a@(Base64 addr) <- decode a
+        insertAddr id addr
+        return $ HereIs i a
+
+      ("notfound", [i]) -> NotFound <$> decode i
+
+      ("update", [a,s]) -> do
+        s <- verify a s
+        a@(Base64 addr) <- decode a
+        id <- getContextId
+        insertAddr id addr
+        return $ Update a s
 
       ("message" , [t,m,s]) -> do
-        mt <- decode t
-        case mt of
+        s  <- verify m s
+        t <- decode t
+        case t of
           MGlobal -> do
-            (Base64 msg) <- decode m
-            Message mt msg <$> verify m s
+            m@(Base64 msg) <- decode m
+            liftIO $ putStrLn msg
 
           _       -> do
-            (Base64 (AES msg)) <- decode m
-            Message mt msg <$> verify m s
+            m@(Base64 (AES msg)) <- decode m
+            liftIO $ putStrLn msg
+        return $ Message t m s
 
       _ -> throwError "CSection failed to parse"
 
@@ -168,17 +267,17 @@ instance Serializable s => Serializable (Base64 s) where
   decode bs         = Base64 <$> (decode =<< fromEither (B64.decode bs))
 
 instance Serializable s => Serializable (RSA s) where
-  encode (RSA s) = join $ encryptRSA <$> (gets context >>= getContextId) <*> encode s
+  encode (RSA s) = join $ encryptRSA <$> getContextId <*> encode s
 
   decode bs = do
     key <- gets privKey
     RSA <$> decode (decryptRSA key bs)
 
 instance Serializable s => Serializable (AES s) where
-  encode (AES s) = join $ encryptAES <$> (gets context >>= getContextKey) <*> encode s
+  encode (AES s) = join $ encryptAES <$> getContextKey <*> encode s
 
   decode bs = do
-    key <- gets context >>= getContextKey
+    key <- getContextKey
     AES <$> decode (decryptAES key bs)
 
 -- Parameter grouping logic
@@ -236,14 +335,50 @@ instance Serializable Packet where
 -- Helper functions for RSA serialization
 
 sign :: P2P ByteString
-sign = (Base64 .: sign' <$> gets privKey <*> (gets context >>= getLastField)) >>= encode
+sign = (Base64 .: sign' <$> gets privKey <*> getLastField) >>= encode
 
 verify :: ByteString -> ByteString -> P2P Signature
 verify m s = do
   m' <- decode m
   (Base64 s') <- decode s
-  pk <- gets context >>= getContextId
+  pk <- getContextId
 
   if verify' pk m' s'
     then return Signature
     else throwError "Signature does not match id"
+
+-- Send a packet
+
+cSend :: Connection -> Packet -> P2P ()
+cSend conn packet = encode packet >>= cSendRaw conn
+
+hSend :: Handle -> Packet -> P2P ()
+hSend h packet = encode packet >>= hSendRaw h
+
+cSendRaw :: Connection -> ByteString -> P2P ()
+cSendRaw = hSendRaw . socket
+
+hSendRaw :: Handle -> ByteString -> P2P ()
+hSendRaw h bs = do
+  liftIO $ hPut h bs
+  liftIO $ hFlush h
+
+sendGlobal :: [CSection] -> P2P ()
+sendGlobal cs = do
+  next <- head <$> gets cwConn
+  base <- makeHeader
+  let rh = mkTarget TGlobal Nothing : base
+
+  cSend next (Packet rh cs)
+
+makeHeader :: P2P [RSection]
+makeHeader = do
+  id   <- gets pubKey
+  addr <- gets homeAddr
+
+  return $
+    [ mkSource id
+    , mkSourceAddr addr
+    , mkVersion 1
+    , mkSupport 1
+    ]

@@ -24,8 +24,9 @@ import GHC.IO.Handle hiding (hGetLine)
 
 import P2P
 import P2P.Types
-import P2P.Instances()
+import P2P.Instances
 import P2P.Math
+import P2P.Util
 
 newState :: IO P2PState
 newState = do
@@ -97,7 +98,7 @@ prolog :: Handle -> HostName -> RSection -> P2P ()
 prolog h host Identify = do
   myId   <- gets pubKey
   myAddr <- gets homeAddr
-  send' h $ Packet [IAm (Base64 myId) (Base64 myAddr)] []
+  hSend h $ Packet [mkIAm myId myAddr] []
 
 prolog h host (IAm (Base64 id) (Base64 adr)) = addConnection h host id adr
 
@@ -122,7 +123,7 @@ route bs (Packet rh c) conn = do
       unless (id == myId) $ do
         -- send to next CW connection
         conn <- head <$> gets cwConn
-        sendRaw conn bs
+        cSendRaw conn bs
 
     Exact -> do
       let Just (Base64 adr) = a
@@ -151,19 +152,3 @@ withMVar m a = modifyMVar_ m $ \st -> do
     Left e -> putStrLn e
     _      -> return ()
   return s
-
--- Send a packet
-
-send :: Connection -> Packet -> P2P ()
-send conn packet = encode packet >>= sendRaw conn
-
-send' :: Handle -> Packet -> P2P ()
-send' h packet = encode packet >>= sendRaw' h
-
-sendRaw :: Connection -> ByteString -> P2P ()
-sendRaw = sendRaw' . socket
-
-sendRaw' :: Handle -> ByteString -> P2P ()
-sendRaw' h bs = do
-  liftIO $ hPut h bs
-  liftIO $ hFlush h

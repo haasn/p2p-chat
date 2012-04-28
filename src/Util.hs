@@ -1,6 +1,7 @@
 module P2P.Util where
 
 import           Control.Monad.Error (throwError)
+import           Control.Monad.State.Strict (gets)
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -87,17 +88,17 @@ genAESKey = withRandomGen $ \gen ->
 
 -- Wrapper functions for the Context
 
-getContextId :: Context -> P2P Id
-getContextId = fromEither . maybe (Left "No target ID in current context") Right . ctxId
+getContextId :: P2P Id
+getContextId = gets context >>= fromEither . maybe (Left "No target ID in current context") Right . ctxId
 
-getContextAddr :: Context -> P2P Address
-getContextAddr = fromEither . maybe (Left "No target address in current context") Right . ctxAddr
+getContextAddr :: P2P Address
+getContextAddr = gets context >>= fromEither . maybe (Left "No target address in current context") Right . ctxAddr
 
-getContextKey :: Context -> P2P AESKey
-getContextKey = fromEither . maybe (Left "No target key in current context") Right . ctxKey
+getContextKey :: P2P AESKey
+getContextKey = gets context >>= fromEither . maybe (Left "No target key in current context") Right . ctxKey
 
-getLastField :: Context -> P2P ByteString
-getLastField = fromEither . maybe (Left "No previously serialized field") Right . lastField
+getLastField :: P2P ByteString
+getLastField = gets context >>= fromEither . maybe (Left "No previously serialized field") Right . lastField
 
 -- Helper functions
 
@@ -151,3 +152,25 @@ decDouble = runGet getFloat64le . toLazy
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.).(.)
+
+-- Wrappers for section constructors
+
+mkTarget tt addr = Target tt (Base64 `fmap` addr)
+mkSource id = Source (Base64 id) Signature
+mkSourceAddr addr = SourceAddr (Base64 addr) Signature
+mkVersion v = Version (Base64 v)
+mkSupport v = Support (Base64 v)
+mkDrop addr = Drop (Base64 addr)
+mkIAm id addr = IAm (Base64 id) (Base64 addr)
+
+mkMessage mt msg = Message mt (pack' msg) Signature
+mkKey k = Key (Base64 (RSA k)) Signature
+mkWhoIs n = WhoIs (Base64 n)
+mkThisIs n id = ThisIs (Base64 n) (Base64 id)
+mkNoExist n = NoExist (Base64 n)
+mkRegister n = Register (Base64 n) Signature
+mkExist n = Exist (Base64 n)
+mkWhereIs id = WhereIs (Base64 id)
+mkHereIs id addr = HereIs (Base64 id) (Base64 addr)
+mkNotFound id = NotFound (Base64 id)
+mkUpdate addr = Update (Base64 addr) Signature
