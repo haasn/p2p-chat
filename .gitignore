@@ -1,6 +1,9 @@
 dist
 cabal-dev
+Main
+Test
 *.o
 *.hi
 *.chi
 *.chs.h
+*.swp

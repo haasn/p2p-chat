@@ -18,9 +18,9 @@ roundCheck a = do
   enc <- encode a
   liftIO $ putStrLn (read (show enc) :: String)
   dec <- decode enc
-  liftIO $ putStrLn "-----"
+  liftIO $ dec `seq` putStrLn "-----"
 
-  return $ dec `seq` a == dec
+  return $ a == dec
 
 showOutput :: String -> P2P Bool
 showOutput s = liftIO (putStrLn s >> putStrLn "-----") >> return True
