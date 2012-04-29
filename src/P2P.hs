@@ -32,9 +32,9 @@ addConnection :: Handle -> HostName -> Id -> Address -> P2P ()
 addConnection h host id adr = do
   exist <- findDirection h
   case exist of
-    Nothing  -> modify (insertConnection $ Connection h id adr host)
-    Just CW  -> modify (\st -> st { cwConn  = updateConn h id adr $ cwConn  st })
-    Just CCW -> modify (\st -> st { ccwConn = updateConn h id adr $ ccwConn st })
+    Nothing  -> modify (insertConnection  $ Connection h id adr host)
+    Just CW  -> modify (\s -> s { cwConn  = updateConn h id adr $ cwConn  s })
+    Just CCW -> modify (\s -> s { ccwConn = updateConn h id adr $ ccwConn s })
 
 delConnection :: Handle -> P2P ()
 delConnection h =
@@ -114,16 +114,20 @@ loadContext id = do
 -- Map processing
 
 insertAddr :: Id -> Address -> P2P ()
-insertAddr id addr = modify $ \st -> st { locTable = Map.insert id addr (locTable st) }
+insertAddr id addr = modify $ \st ->
+  st { locTable = Map.insert id addr (locTable st) }
 
 forgetAddr :: Address -> P2P ()
-forgetAddr addr = modify $ \st -> st { locTable = Map.filter (/= addr) (locTable st) }
+forgetAddr addr = modify $ \st ->
+  st { locTable = Map.filter (/= addr) (locTable st) }
 
 insertId :: Name -> Id -> P2P ()
-insertId name id = modify $ \st -> st { idTable = Map.insert name id (idTable st) }
+insertId name id = modify $ \st ->
+  st { idTable = Map.insert name id (idTable st) }
 
 insertKey :: Id -> AESKey -> P2P ()
-insertKey id key = modify $ \st -> st { keyTable = Map.insert id key (keyTable st) }
+insertKey id key = modify $ \st ->
+  st { keyTable = Map.insert id key (keyTable st) }
 
 -- Packet processing functions
 

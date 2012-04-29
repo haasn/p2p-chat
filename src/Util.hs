@@ -120,7 +120,7 @@ getLastField = do
 -- Helper functions
 
 fromMaybe :: Maybe a -> P2P a
-fromMaybe Nothing  = throwError "Nothing"
+fromMaybe Nothing  = throwError "Nothing in fromMaybe"
 fromMaybe (Just p) = return p
 
 fromEither :: Either String r -> P2P r
