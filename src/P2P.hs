@@ -107,6 +107,7 @@ setLastField f = modifyContext $ \ctx -> ctx { lastField = Just f }
 loadContext :: Id -> P2P ()
 loadContext id = do
   state <- get
+  -- liftIO . putStrLn $ "[?] Loading context id: " ++ show id
   setContextId id
   Map.lookup id (keyTable state) `F.forM_` setContextKey
   Map.lookup id (locTable state) `F.forM_` setContextAddr

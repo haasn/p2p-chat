@@ -27,6 +27,7 @@ import           GHC.IO.Handle (Handle, hFlush)
 import           P2P
 import           P2P.Types
 import           P2P.Util
+import           P2P.Math
 
 -- Section logic
 
@@ -50,10 +51,12 @@ instance Serializable RSection where
           t       -> Target t <$> decode (head l)
           -- FIXME: Check and set ctxIsMe
 
-      ("source", [i,s]) -> do
-        s <- verify i s
-        i@(Base64 id) <- decode i
+      ("source", [i',s]) -> do
+        i@(Base64 id) <- decode i'
         loadContext id
+
+        -- The context needs to be there before it can be verified
+        s <- verify i' s
         return $ Source i s
 
       ("sourceaddr", [a,s]) -> do
@@ -97,7 +100,7 @@ instance Serializable RSection where
         sendGlobal [mkMessage MGlobal "Hello, world!"]
         throwError "test.global"
 
-      _ -> throwError "RSection failed to parse"
+      (a, b) -> throwError $ "RSection failed to parse: " ++ show bs
 
 instance Serializable CSection where
   encode (Message t m s) = sec "MESSAGE" [encode t, m', sign]
@@ -132,8 +135,8 @@ instance Serializable CSection where
         n@(Base64 name) <- decode n
         idt <- gets idTable
         case Map.lookup name idt of
-          Nothing -> return () -- TODO: Reply with NOEXIST
-          Just id -> return () -- TODO: Reply with THISIS
+          Nothing -> reply [mkNoExist name]
+          Just id -> reply [mkThisIs  name id]
         return $ WhoIs n
 
       ("thisis", [n,i]) -> do
@@ -152,8 +155,10 @@ instance Serializable CSection where
         -- See if name exists
         idt <- gets idTable
         case Map.lookup name idt of
-          Nothing -> insertId name id -- TODO: Reply with THISIS
-          Just _  -> return () -- TODO: Reply with EXIST
+          Nothing -> do
+            insertId name id
+            reply [mkThisIs name id]
+          Just _  -> reply [mkExist name]
         return $ Register n s
 
       ("exist", [n]) -> Exist <$> decode n
@@ -164,8 +169,8 @@ instance Serializable CSection where
         i@(Base64 id) <- decode i
         loct <- gets locTable
         case Map.lookup id loct of
-          Nothing -> return ()  -- TODO: Reply with NOTFOUND
-          Just loc -> return () -- TODO: Reply with HEREIS
+          Nothing  -> reply [mkNotFound id]
+          Just loc -> reply [mkHereIs id loc]
         return $ WhereIs i
 
       ("hereis", [i,a]) -> do
@@ -184,7 +189,7 @@ instance Serializable CSection where
         return $ Update a s
 
       ("message" , [t,m,s]) -> do
-        s  <- verify m s
+        s <- verify m s
         t <- decode t
         case t of
           MGlobal -> do
@@ -196,7 +201,7 @@ instance Serializable CSection where
             liftIO $ putStrLn msg
         return $ Message t m s
 
-      _ -> throwError "CSection failed to parse"
+      _ -> throwError $ "CSection failed to parse: " ++ show bs
 
 -- Trivial data types
 
@@ -333,8 +338,11 @@ instance Serializable Packet where
       then do
         isme <- getIsMe
         if isme
-          -- drop the \n\n too
+                                          -- Drop the \n\n too
           then Packet <$> pure header <*> decode (BS.drop 2 c)
+
+          -- Don't bother with the body for packets to others, we only need
+          -- the routing header to route it further.
           else return $ Packet header []
       else throwError
         "Source or Target not present and not a pre-route packet, ignoring"
@@ -356,8 +364,8 @@ verify m s = do
 
 -- Send a packet
 
-cSend :: Connection -> Packet -> P2P ()
-cSend conn packet = encode packet >>= cSendRaw conn
+send :: Packet -> Connection -> P2P ()
+send packet conn = encode packet >>= cSendRaw conn
 
 hSend :: Handle -> Packet -> P2P ()
 hSend h packet = encode packet >>= hSendRaw h
@@ -372,11 +380,38 @@ hSendRaw h bs = do
 
 sendGlobal :: [CSection] -> P2P ()
 sendGlobal cs = do
-  next <- head <$> gets cwConn
   base <- makeHeader
   let rh = mkTarget TGlobal Nothing : base
 
-  cSend next (Packet rh cs)
+  (head <$> gets cwConn) >>= send (Packet rh cs)
+
+sendAddr :: Address -> [CSection] -> P2P ()
+sendAddr a cs = do
+  base <- makeHeader
+  home <- gets homeAddr
+  let rh = mkTarget Exact (Just a) : base
+
+  case dir home a of
+    CW  -> (head <$> gets  cwConn) >>= send (Packet rh cs)
+    CCW -> (head <$> gets ccwConn) >>= send (Packet rh cs)
+
+reply :: [CSection] -> P2P ()
+reply cs = do
+  addr <- replyAddr
+  case addr of
+    Just a  -> sendAddr  a cs
+    Nothing -> sendGlobal  cs
+
+replyAddr :: P2P (Maybe Address)
+replyAddr = do
+  addr <- ctxAddr <$> gets context
+  id   <- ctxId   <$> gets context
+
+  case addr of
+    Just a -> return addr
+    Nothing -> case id of
+      Nothing -> throwError "No address or id in current context"
+      Just id -> Map.lookup id <$> gets locTable
 
 makeHeader :: P2P [RSection]
 makeHeader = do

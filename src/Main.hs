@@ -9,6 +9,7 @@ import Data.Maybe (fromJust)
 import Data.List (find)
 import Data.Tuple (swap)
 import Data.ByteString (ByteString, hGetSome, hGetLine, hPut)
+import Data.Char (toLower)
 import qualified Data.Map as Map
 
 import Control.Applicative
@@ -21,6 +22,9 @@ import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar hiding (withMVar)
 
 import GHC.IO.Handle hiding (hGetLine)
+
+import System.Exit (exitSuccess)
+import System.Environment (getArgs)
 
 import P2P
 import P2P.Types
@@ -47,25 +51,50 @@ newState = do
 
 main :: IO ()
 main = withSocketsDo $ do
+  args  <- getArgs
   state <- newState
   mvar  <- newMVar state
-  sock  <- listenOn (PortNumber 1234)
+  sock  <- let port = case args of
+                        [p] -> (fromIntegral $ read p)
+                        _   -> 1234
+           in listenOn (PortNumber port)
 
-  (`finally` sClose sock) . forever $ do
+  forkIO $ (`finally` sClose sock) . forever $ do
     (h, host, port) <- accept sock
     hSetBuffering h NoBuffering
 
     -- Debugging purposes
-    putStrLn $ "[?] Accepted connection from " ++ show host ++ ":" ++ show port
+    putStrLn $ "[?] Accepted connection from " ++ show host ++ ':': show port
 
-    forkIO $ runThread h host mvar `finally` withMVar mvar (close h)
+    forkIO $ runThread h host mvar `finally` withMVar mvar (close h host port)
+
+  handleInput mvar
+
+handleInput :: MVar P2PState -> IO ()
+handleInput m = forever $ do
+  line <- map toLower <$> getLine
+
+  case line of
+    "quit" -> exitSuccess
+    "test" -> connect "localhost" 1234 m
+
+    _ -> putStrLn "[$] Unrecognized input"
+
+connect :: HostName -> PortNumber -> MVar P2PState -> IO ()
+connect host port mvar = do
+  h <- connectTo host (PortNumber port)
+  putStrLn $ "[?] Connected to " ++ show host ++ ':': show port
+  withMVar mvar $ do
+    iam <- mkIAm <$> gets pubKey <*> gets homeAddr
+    hSend h $ Packet [Identify, iam] []
+  forkIO $ runThread h host mvar `finally` withMVar mvar (close h host port)
+  return ()
 
 runThread :: Handle -> HostName -> MVar P2PState -> IO ()
 runThread h host m = do
   eof <- hIsEOF h
   unless eof $ do
-   -- Read as much as possible
-   packet <- hGetLine h
+   packet <- hGetSome h 2048
    withMVar m (process h host packet)
    runThread h host m
 
@@ -82,14 +111,17 @@ process h host bs = do
   getConnection h = do
     conn <- findConnection h
     case conn of
-      Nothing -> throwError "No connection found, ignoring packet"
+      Nothing -> do
+        hSend h $ Packet [Identify] []
+        throwError "No Connection found, ignoring packet"
       Just c  -> return c
 
 -- Close a handle
 
-close :: Handle -> P2P ()
-close h = do
+close :: Handle -> HostName -> PortNumber -> P2P ()
+close h host port = do
   liftIO $ hClose h
+  liftIO . putStrLn $ "[?] Disconnected from " ++ show host ++ ':': show port
   delConnection h
 
 -- Evaluate a pre-Connection package
@@ -149,6 +181,6 @@ withMVar :: MVar P2PState -> P2P () -> IO ()
 withMVar m a = modifyMVar_ m $ \st -> do
   (res, s) <- runStateT (runErrorT a) st
   case res of
-    Left e -> putStrLn e
+    Left e -> putStrLn $ "[!] " ++ e
     _      -> return ()
   return s
