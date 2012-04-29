@@ -119,7 +119,7 @@ route bs (Packet rh c) conn = do
   let Just (Target tt a) = find isTarget rh
 
   case tt of
-    TGlobal -> do
+    TGlobal ->
       unless (id == myId) $ do
         -- send to next CW connection
         conn <- head <$> gets cwConn

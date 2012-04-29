@@ -5,7 +5,6 @@ import P2P.Util
 import P2P.Math
 
 import Control.Monad.Trans (liftIO)
-
 import Control.Monad.State.Strict (get, put, evalStateT)
 import Control.Monad.Error (runErrorT)
 
@@ -21,7 +20,7 @@ roundCheck a = do
   dec <- decode enc
   liftIO $ putStrLn "-----"
 
-  return $ a == dec
+  return $ dec `seq` a == dec
 
 showOutput :: String -> P2P Bool
 showOutput s = liftIO (putStrLn s >> putStrLn "-----") >> return True
@@ -30,30 +29,30 @@ tests :: P2P [Bool]
 tests = do
   state <- get
   key   <- genAESKey
-  let ctx = (context state) { targetKey = Just key }
+  let ctx = (context state) { ctxKey = Just key }
   let pub = pubKey state
   put $ state { context = ctx }
 
   sequence
-    [ roundCheck $ (12345 :: Integer)
+    [ roundCheck (12345 :: Integer)
 
     , roundCheck $ Base64 (12345 :: Integer)
     , roundCheck $ Base64 (RSA (12345 :: Integer))
     , roundCheck $ Base64 (AES (12345 :: Integer))
     , roundCheck $ pack' "Hello, world!"
 
-    , roundCheck $ "Hello, world!"
+    , roundCheck "Hello, world!"
     , roundCheck $ Base64 (0.12345 :: Double)
 
-    , roundCheck $ TGlobal
-    , roundCheck $ Exact
-    , roundCheck $ Approx
+    , roundCheck TGlobal
+    , roundCheck Exact
+    , roundCheck Approx
 
-    , roundCheck $ MGlobal
-    , roundCheck $ Channel
-    , roundCheck $ Single
+    , roundCheck MGlobal
+    , roundCheck Channel
+    , roundCheck Single
 
-    , roundCheck $ (Nothing :: Maybe Integer)
+    , roundCheck (Nothing :: Maybe Integer)
     , roundCheck $ Just (12345 :: Integer)
 
     , roundCheck $ Base64 pub
@@ -67,13 +66,13 @@ tests = do
     , roundCheck $ Version (Base64 1)
     , roundCheck $ Support (Base64 2)
     , roundCheck $ Drop (Base64 0.12345)
-    , roundCheck $ Identify
+    , roundCheck Identify
     , roundCheck $ IAm (Base64 pub) (Base64 0.12345)
 
     -- Content tests
 
-    , roundCheck $ Message MGlobal (pack' "Hello, world!") Signature
-    , roundCheck $ Message Single  (pack' "Hello, world!") Signature
+    --, roundCheck $ Message MGlobal (pack' "Hello, world!") Signature
+    --, roundCheck $ Message Single  (pack' "Hello, world!") Signature
 
     , roundCheck $ WhoIs (Base64 "nand")
     , roundCheck $ ThisIs (Base64 "nand") (Base64 pub)
@@ -92,7 +91,7 @@ tests = do
 
     -- Full body packet test
 
-    , roundCheck $ Packet [Source (Base64 pub) Signature, Target TGlobal Nothing] [WhoIs (Base64 "nand"), Exist (Base64 "xor")]
+    , roundCheck $ Packet [Identify] []
     ]
 
 main :: IO ()
@@ -115,5 +114,5 @@ newState = do
     , privKey   = priv
     , homeAddr  = 0.1234
     , randomGen = newgen
-    , context   = Context (Just pub) (Just 0.12345) Nothing Nothing
+    , context   = Context (Just pub) (Just 0.12345) Nothing Nothing True
     }

@@ -37,7 +37,7 @@ addConnection h host id adr = do
     Just CCW -> modify (\st -> st { ccwConn = updateConn h id adr $ ccwConn st })
 
 delConnection :: Handle -> P2P ()
-delConnection h = do
+delConnection h =
   modify $ \st -> st { cwConn = del (cwConn st), ccwConn = del (ccwConn st) }
    where del = filter (not . (== h) . socket)
 

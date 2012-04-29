@@ -35,7 +35,8 @@ data P2PState = P2PState
   }
 
 instance Show P2PState where
-  show p = show (cwConn p, ccwConn p, idTable p, locTable p, keyTable p, pubKey p, privKey p, homeAddr p, context p)
+  show p = show (cwConn p, ccwConn p, idTable p, locTable p, keyTable p,
+                 pubKey p, privKey p, homeAddr p, context p)
 
 -- Friendly types
 
@@ -61,7 +62,8 @@ data Packet = Packet RoutingHeader Content deriving (Eq, Show)
 type RoutingHeader = [RSection]
 type Content       = [CSection]
 
--- Immediate data representation of all available sections, type and structure safe
+-- Immediate data representation of all available sections,
+-- type and structure safe
 
 data RSection =
     Target TargetType (Maybe (Base64 Address))
@@ -75,7 +77,9 @@ data RSection =
  deriving (Eq, Show)
 
 data CSection =
-    Message MessageType ByteString Signature -- This ByteString must be encoded separately
+  -- This ByteString must be encoded separately
+    Message MessageType ByteString Signature
+
   | Key (RSA64 AESKey) Signature
 
   -- Id table interactions
@@ -108,7 +112,8 @@ data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
 
 data Direction = CW | CCW deriving (Eq, Show, Read)
 
--- Safety types for Base64 and encryption; only used to enforce parsing/serializing rules
+-- Safety types for Base64 and encryption; only used to enforce
+-- parsing/serializing rules
 
 newtype Base64 t = Base64 t deriving (Eq, Show)
 newtype AES t    = AES t    deriving (Eq, Show)

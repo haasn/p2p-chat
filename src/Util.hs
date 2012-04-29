@@ -1,5 +1,6 @@
 module P2P.Util where
 
+import           Control.Applicative
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 
@@ -89,16 +90,32 @@ genAESKey = withRandomGen $ \gen ->
 -- Wrapper functions for the Context
 
 getContextId :: P2P Id
-getContextId = gets context >>= fromEither . maybe (Left "No target ID in current context") Right . ctxId
+getContextId = do
+  id <- ctxId <$> gets context
+  case id of
+    Nothing -> throwError "No remote ID in current context"
+    Just i  -> return i
 
 getContextAddr :: P2P Address
-getContextAddr = gets context >>= fromEither . maybe (Left "No target address in current context") Right . ctxAddr
+getContextAddr = do
+  addr <- ctxAddr <$> gets context
+  case addr of
+    Nothing -> throwError "No remote address in current context"
+    Just a  -> return a
 
 getContextKey :: P2P AESKey
-getContextKey = gets context >>= fromEither . maybe (Left "No target key in current context") Right . ctxKey
+getContextKey = do
+  key <- ctxKey <$> gets context
+  case key of
+    Nothing -> throwError "No remote key in current context"
+    Just k  -> return k
 
 getLastField :: P2P ByteString
-getLastField = gets context >>= fromEither . maybe (Left "No previously serialized field") Right . lastField
+getLastField = do
+  field <- lastField <$> gets context
+  case field of
+    Nothing -> throwError "No previously serialized field"
+    Just f  -> return f
 
 -- Helper functions
 

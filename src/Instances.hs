@@ -69,7 +69,8 @@ instance Serializable RSection where
 
       ("support", [v]) -> do
         v@(Base64 ver) <- decode v
-        when (ver < 1) $ throwError "Client does not support minimum packet ver, dropping"
+        when (ver < 1) $
+          throwError "Client does not support minimum packet ver, dropping"
         return $ Support v
 
       ("drop", [a]) -> do
@@ -89,7 +90,7 @@ instance Serializable RSection where
       ("identify", []) -> return Identify
 
       -- Test “functions” for debugging
-      ("test.dump", []) -> do
+      ("test.dump", []) ->
         get >>= throwError . show
 
       ("test.global", []) -> do
@@ -252,7 +253,8 @@ instance Serializable s => Serializable (Maybe s) where
     else Just <$> decode bs
 
 instance Serializable PublicKey where
-  encode (PublicKey s n e) = return $ BS.concat [encIntegral s, encIntegral n, encIntegral e]
+  encode (PublicKey s n e) = return $
+    BS.concat [encIntegral s, encIntegral n, encIntegral e]
 
   decode bs = return $ PublicKey size (decIntegral n) (decIntegral e)
     where
@@ -317,20 +319,25 @@ instance Serializable Content where
   decode bs = mapM decode $ BS.split (ord' '\n') bs
 
 instance Serializable Packet where
-  encode (Packet rh c) = BS.concat <$> sequence [encode rh, return $ pack' "\n\n", encode c]
+  encode (Packet rh c) = BS.concat <$> sequence
+    [encode rh, return $ pack' "\n\n", encode c]
+
   decode bs = do
     let (rh, c) = BS.breakSubstring (pack' "\n\n") bs
     -- Make sure the context is always clean before decoding
     resetContext
     header <- decode rh
     -- Check for presence of Source and Target, alternatively Identify or IAm
-    if any isSource header && any isTarget header || any isIdentify header || any isIAm header
+    if any isSource header && any isTarget header
+       || any isIdentify header || any isIAm header
       then do
         isme <- getIsMe
         if isme
-          then Packet <$> pure header <*> decode (BS.drop 2 c) -- drop the \n\n too
+          -- drop the \n\n too
+          then Packet <$> pure header <*> decode (BS.drop 2 c)
           else return $ Packet header []
-      else throwError "Source or Target not present and not a pre-route packet, ignoring"
+      else throwError
+        "Source or Target not present and not a pre-route packet, ignoring"
 
 -- Helper functions for RSA serialization
 
@@ -376,7 +383,7 @@ makeHeader = do
   id   <- gets pubKey
   addr <- gets homeAddr
 
-  return $
+  return
     [ mkSource id
     , mkSourceAddr addr
     , mkVersion 1
