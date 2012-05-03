@@ -5,5 +5,3 @@ Some open tasks:
  - Check and set ctxIsMe for Approx packets
 
  - Implement connection creation logic and panic states
-
- - Implement DHT mirroring logic

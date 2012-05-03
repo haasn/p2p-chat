@@ -89,7 +89,7 @@ instance Parsable CSection where
       case Map.lookup name idt of
         Nothing -> do
           insertId name id
-          reply [mkThisIs name id]
+          replyMirror [mkThisIs name id]
         Just _  -> reply [mkExist name]
 
     WhereIs (Base64 id) -> do
@@ -105,6 +105,7 @@ instance Parsable CSection where
       parse s
       id <- getContextId
       insertAddr id addr
+      replyMirror [mkHereIs id addr]
 
     -- TODO: Notify the user of these somehow
     NoExist  _ -> return ()

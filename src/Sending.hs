@@ -67,6 +67,21 @@ replyAddr = do
       Nothing -> throwError "No address or id in current context"
       Just id -> Map.lookup id <$> gets locTable
 
+replyMirror :: [CSection] -> P2P ()
+replyMirror cs = do
+  addr <- replyAddr
+  case addr of
+    Nothing -> sendGlobal cs
+    Just a -> do
+      -- Send to the remote client first
+      sendAddr a cs
+
+      -- Send to all of my peers next for mirroring
+      conns <- (++) <$> gets cwConn <*> gets ccwConn
+      let addrs = map remoteAddr conns
+
+      mapM_ (`sendAddr` cs) addrs
+
 makeHeader :: P2P [RSection]
 makeHeader = do
   id   <- gets pubKey
