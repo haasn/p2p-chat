@@ -1,4 +1,5 @@
-import P2P
+module Main where
+
 import P2P.Types
 import P2P.Serializing()
 import P2P.Util

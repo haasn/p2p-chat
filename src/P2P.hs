@@ -4,11 +4,9 @@ import           Network (HostName)
 
 import           Crypto.Random (SystemRandom)
 import           Control.Monad.State.Strict
-import           Control.Monad (when, unless)
 
 import qualified Data.Map as Map
 import qualified Data.Foldable as F (forM_)
-import           Data.Maybe (isJust)
 import           Data.ByteString (ByteString)
 import           Data.List (find)
 

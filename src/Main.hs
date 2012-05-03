@@ -5,15 +5,12 @@ import Network
 import Codec.Crypto.RSA (generateKeyPair)
 import Crypto.Random (newGenIO, SystemRandom)
 
-import Data.Maybe (fromJust)
 import Data.List (find)
-import Data.Tuple (swap)
-import Data.ByteString (ByteString, hGetSome, hGetLine, hPut)
+import Data.ByteString (ByteString, hGetSome)
 import Data.Char (toLower)
 import qualified Data.Map as Map
 
 import Control.Applicative
-import Control.Monad (forever, when, unless)
 import Control.Monad.State.Strict
 import Control.Monad.Error
 import Control.Exception (finally)
@@ -29,8 +26,8 @@ import System.Environment (getArgs)
 import P2P
 import P2P.Types
 import P2P.Sending
-import P2P.Serializing
-import P2P.Parsing
+import P2P.Serializing()
+import P2P.Parsing()
 import P2P.Math
 import P2P.Util
 
@@ -47,7 +44,7 @@ newState = do
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.5
-    , randomGen = gen
+    , randomGen = newgen
     , context   = nullContext
     }
 
@@ -57,7 +54,7 @@ main = withSocketsDo $ do
   state <- newState
   mvar  <- newMVar state
   sock  <- let port = case args of
-                        [p] -> (fromIntegral $ read p)
+                        [p] -> fromIntegral $ read p
                         _   -> 1234
            in listenOn (PortNumber port)
 
@@ -96,20 +93,21 @@ runThread :: Handle -> HostName -> MVar P2PState -> IO ()
 runThread h host m = do
   eof <- hIsEOF h
   unless eof $ do
+   -- FIXME: Make this not length dependent
    packet <- hGetSome h 2048
    withMVar m (process h host packet)
    runThread h host m
 
 process :: Handle -> HostName -> ByteString -> P2P ()
 process h host bs = do
-  let p@(Packet rh c) = decode bs
+  let p@(Packet rh _) = decode bs
 
   -- Parse right after decoding because sigs are verified here
   parse p
 
   -- Check for no route packets
   if any isIdentify rh || any isIAm rh
-    then mapM_ (prolog h host) rh
+    then mapM_ (preroute h host) rh
     else getConnection h >>= route bs p
  where
   getConnection :: Handle -> P2P Connection
@@ -131,16 +129,16 @@ close h host port = do
 
 -- Evaluate a pre-Connection package
 
-prolog :: Handle -> HostName -> RSection -> P2P ()
-prolog h host Identify = do
+preroute :: Handle -> HostName -> RSection -> P2P ()
+preroute h _ Identify = do
   myId   <- gets pubKey
   myAddr <- gets homeAddr
   hSend h $ Packet [mkIAm myId myAddr] []
 
-prolog h host (IAm (Base64 id) (Base64 adr)) = addConnection h host id adr
+preroute h host (IAm (Base64 id) (Base64 adr)) = addConnection h host id adr
 
 -- Ignore everything else
-prolog _ _ _ = return ()
+preroute _ _ _ = return ()
 
 -- Route a post-Connection package
 

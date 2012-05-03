@@ -2,42 +2,39 @@
 module P2P.Parsing where
 
 import           Control.Applicative
-import           Control.Monad (join, when, unless)
+import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
-
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 
 import qualified Data.Map as Map
 
 import           P2P
 import           P2P.Types
 import           P2P.Util
-import           P2P.Math
 import           P2P.Sending
 
 instance Parsable RSection where
-  parse (Target tt ma) = do
-    -- Separate and decode the address
-    Base64 adr <- if (tt == TGlobal)
-      then return (Base64 0)
-      else case ma of
-        Nothing -> throwError "TargetType /= TGlobal and no target"
-        Just m  -> return m
-
-    case tt of
-      TGlobal -> setIsMe
-      Exact  -> do
-        myadr <- gets homeAddr
-        when (myadr == adr) setIsMe
-
-      Approx -> do
-        return ()
-        -- TODO: Check neighbour distances and setIsMe here
-
   parse rsec = case rsec of
+    Target tt ma -> do
+      -- Separate and decode the address
+      Base64 adr <-
+        if tt == TGlobal
+          then return (Base64 0)
+          else case ma of
+            Nothing -> throwError "TargetType /= TGlobal and no target"
+            Just m  -> return m
+
+      case tt of
+        TGlobal -> setIsMe
+        Exact  -> do
+          myadr <- gets homeAddr
+          when (myadr == adr) setIsMe
+
+        Approx ->
+          return ()
+          -- TODO: Check neighbour distances and setIsMe here
+
     Source (Base64 id) s ->
       loadContext id >> parse s
 
@@ -63,6 +60,9 @@ instance Parsable RSection where
     -- This is handled separately since it isn't necessarily on a Connection
     Identify -> return ()
 
+    RUnknown bs ->
+      throwError $ "Unknown RSection: " ++ show bs
+
 instance Parsable CSection where
   parse csec = case csec of
     Key (Base64 key) s -> do
@@ -79,10 +79,6 @@ instance Parsable CSection where
 
     ThisIs (Base64 name) (Base64 id) ->
       insertId name id
-
-    -- TODO: Notify the user of these somehow
-    NoExist _ -> return ()
-    Exist   _ -> return ()
 
     Register (Base64 name) s -> do
       parse s
@@ -110,6 +106,11 @@ instance Parsable CSection where
       id <- getContextId
       insertAddr id addr
 
+    -- TODO: Notify the user of these somehow
+    NoExist  _ -> return ()
+    NotFound _ -> return ()
+    Exist    _ -> return ()
+
     Message t m s -> do
       parse s
       case t of
@@ -120,6 +121,9 @@ instance Parsable CSection where
         _       ->
           let Base64 msg = decode m :: Base64 (AES String)
           in  unAES msg >>= liftIO . putStrLn
+
+    CUnknown bs ->
+      throwError $ "Unknown CSection: " ++ show bs
 
 -- Signature verification logic
 

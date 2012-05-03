@@ -1,8 +1,7 @@
 dist
 cabal-dev
-Main
-Test
-o
+bin
+obj
 *.o
 *.hi
 *.chi

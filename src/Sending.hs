@@ -12,7 +12,7 @@ import qualified Data.Map as Map
 import           GHC.IO.Handle (Handle, hFlush)
 
 import           P2P.Types
-import           P2P.Serializing
+import           P2P.Serializing()
 import           P2P.Util
 import           P2P.Math
 
@@ -62,7 +62,7 @@ replyAddr = do
   id   <- ctxId   <$> gets context
 
   case addr of
-    Just a -> return addr
+    Just _ -> return addr
     Nothing -> case id of
       Nothing -> throwError "No address or id in current context"
       Just id -> Map.lookup id <$> gets locTable

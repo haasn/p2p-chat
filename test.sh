@@ -1,1 +1,27 @@
-ghc -hidir o -odir o src/Math.hs src/Util.hs src/Types.hs src/P2P.hs src/Sending.hs src/Serializing.hs src/Parsing.hs src/Test.hs -o Test && ./Test
+#!/bin/bash
+FILES="
+src/Math.hs
+src/Util.hs
+src/Types.hs
+src/P2P.hs
+src/Sending.hs
+src/Serializing.hs
+src/Parsing.hs
+"
+
+MAINFILE="Test"
+
+GHC_WARNS="
+-Wall
+-fno-warn-name-shadowing
+-fno-warn-orphans
+-fno-warn-missing-signatures
+-fno-warn-type-defaults
+-fno-warn-unused-do-bind
+"
+
+GHC_OPTS="${GHC_WARNS} -hidir bin/obj -odir bin/obj"
+
+rm -f -- bin/obj/Main.*
+hlint ${FILES} src/${MAINFILE}.hs
+ghc ${GHC_OPTS} ${FILES} src/${MAINFILE}.hs -o bin/${MAINFILE} && bin/${MAINFILE} $@

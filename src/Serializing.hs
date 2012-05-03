@@ -3,32 +3,25 @@
 module P2P.Serializing where
 
 import           Control.Applicative
-import           Control.Monad (join, when, unless)
+import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
-import           Control.Monad.State.Strict (get, gets, modify)
-import           Control.Monad.Trans (liftIO)
+import           Control.Monad.State.Strict (gets)
 
 import           Codec.Crypto.RSA (PublicKey(..))
 
-import           Data.ByteString (ByteString, hPut)
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
 import           Data.String (fromString)
 import           Data.Char (toLower)
-import           Data.Maybe (fromJust)
-
-import qualified Data.Map as Map
 
 import           Data.Text (Text, unpack)
 import           Data.Text.Encoding
 
-import           GHC.IO.Handle (Handle, hFlush)
-
 import           P2P
 import           P2P.Types
 import           P2P.Util
-import           P2P.Math
 
 -- Section coding
 
@@ -41,6 +34,8 @@ instance Serializable RSection where
   encode (Drop       a  ) = sec "DROP"       [encode a]
   encode (IAm        i a) = sec "IAM"        [encode i, encode a]
   encode (Identify      ) = sec "IDENTIFY"   []
+
+  encode (RUnknown   _  ) = throwError "Trying to encode RUnknown"
 
   decode bs = case parse' (ungroup' bs) of
     ("target", tt:l) -> case decode tt of
@@ -58,7 +53,7 @@ instance Serializable RSection where
     _ -> RUnknown bs
 
 instance Serializable CSection where
-  encode (Message t m s) = sec "MESSAGE" [encode t, m', sign]
+  encode (Message t m _) = sec "MESSAGE" [encode t, m', sign]
     where m' = case t of
             MGlobal -> encode $ Base64 m
             _       -> encode $ Base64 (AES m)
@@ -73,6 +68,8 @@ instance Serializable CSection where
   encode (HereIs   i a) = sec "HEREIS"   [encode i, encode a]
   encode (NotFound   i) = sec "NOTFOUND" [encode i]
   encode (Update   a _) = sec "UPDATE"   [encode a, sign]
+
+  encode (CUnknown _  ) = throwError "Trying to encode CUnknown"
 
   decode bs = case parse' (ungroup' bs) of
     ("key", [k,s]) -> Key (decode k) (Verify k s)
@@ -122,6 +119,7 @@ instance Serializable TargetType where
         "global" -> TGlobal
         "exact"  -> Exact
         "approx" -> Approx
+        s        -> error $ "Failed parsing TargetType: " ++ s
 
 instance Serializable MessageType where
   encode MGlobal = encode "GLOBAL"
@@ -134,6 +132,7 @@ instance Serializable MessageType where
         "global"  -> MGlobal
         "channel" -> Channel
         "single"  -> Single
+        s         -> error $ "Failed parsing MessageType: " ++ s
 
 instance Serializable s => Serializable (Maybe s) where
   encode Nothing  = return BS.empty
@@ -160,12 +159,14 @@ instance Serializable s => Serializable (Base64 s) where
   decode            = Base64 . decode . fromEither . B64.decode
 
 instance Serializable s => Serializable (RSA s) where
-  encode (RSA s) = join $ encryptRSA <$> getContextId <*> encode s
-  decode         = UnRSA
+  encode (RSA s)   = join $ encryptRSA <$> getContextId <*> encode s
+  encode (UnRSA _) = error "Trying to encode UnRSA"
+  decode           = UnRSA
 
 instance Serializable s => Serializable (AES s) where
-  encode (AES s) = join $ encryptAES <$> getContextKey <*> encode s
-  decode         = UnAES
+  encode (AES s)   = join $ encryptAES <$> getContextKey <*> encode s
+  encode (UnAES _) = error "Trying to encode UnAES"
+  decode           = UnAES
 
 -- Parameter grouping logic
 
