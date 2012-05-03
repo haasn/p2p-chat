@@ -138,7 +138,7 @@ class Serializable s where
   encode :: s -> P2P ByteString
   decode :: ByteString -> s
 
-class Parse s where
+class Parsable s where
   parse :: s -> P2P ()
 
 -- Serialization context, used to pass along key information

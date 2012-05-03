@@ -18,7 +18,7 @@ import           P2P.Util
 import           P2P.Math
 import           P2P.Sending
 
-instance Parse RSection where
+instance Parsable RSection where
   parse (Target tt ma) = do
     -- Separate and decode the address
     Base64 adr <- if (tt == TGlobal)
@@ -63,7 +63,7 @@ instance Parse RSection where
     -- This is handled separately since it isn't necessarily on a Connection
     Identify -> return ()
 
-instance Parse CSection where
+instance Parsable CSection where
   parse csec = case csec of
     Key (Base64 key) s -> do
       parse s
@@ -123,7 +123,7 @@ instance Parse CSection where
 
 -- Signature verification logic
 
-instance Parse Signature where
+instance Parsable Signature where
   parse Signature = return ()
   parse (Verify m s) = do
     let m' = decode m
@@ -134,13 +134,13 @@ instance Parse Signature where
 
 -- Full packet parsing
 
-instance Parse RoutingHeader where
+instance Parsable RoutingHeader where
   parse = mapM_ parse
 
-instance Parse Content where
+instance Parsable Content where
   parse = mapM_ parse
 
-instance Parse Packet where
+instance Parsable Packet where
   parse (Packet rh cs) = do
     -- Make sure the context is always clean before parsing
     resetContext
