@@ -34,6 +34,12 @@ import P2P.Parsing()
 import P2P.Math
 import P2P.Util
 
+version :: String
+version = "0.1"
+
+defaultPort :: PortNumber
+defaultPort = 1234
+
 newState :: IO P2PState
 newState = do
   gen <- newGenIO :: IO SystemRandom
@@ -51,9 +57,6 @@ newState = do
     , context   = nullContext
     }
 
-defaultPort :: PortNumber
-defaultPort = 1234
-
 main :: IO ()
 main = withSocketsDo $ do
   args  <- getArgs
@@ -63,6 +66,8 @@ main = withSocketsDo $ do
                         [p] -> fromIntegral $ read p
                         _   -> defaultPort
            in listenOn (PortNumber port)
+
+  putStrLn $ "[?] p2p-chat v" ++ version ++ " loaded"
 
   forkIO $ (`finally` sClose sock) . forever $ do
     (h, host, port) <- accept sock
