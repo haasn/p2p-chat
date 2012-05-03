@@ -127,17 +127,3 @@ insertId name id = modify $ \st ->
 insertKey :: Id -> AESKey -> P2P ()
 insertKey id key = modify $ \st ->
   st { keyTable = Map.insert id key (keyTable st) }
-
--- Packet processing functions
-
-isTarget (Target _ _) = True
-isTarget _            = False
-
-isSource (Source _ _) = True
-isSource _            = False
-
-isIdentify Identify = True
-isIdentify _        = False
-
-isIAm (IAm _ _) = True
-isIAm _         = False

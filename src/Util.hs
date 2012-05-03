@@ -179,6 +179,7 @@ mkVersion v = Version (Base64 v)
 mkSupport v = Support (Base64 v)
 mkDrop addr = Drop (Base64 addr)
 mkIAm id addr = IAm (Base64 id) (Base64 addr)
+mkPeer host = Peer (Base64 host)
 
 mkMessage mt msg = Message mt (pack' msg) Signature
 mkKey k = Key (Base64 (RSA k)) Signature
@@ -191,3 +192,25 @@ mkWhereIs id = WhereIs (Base64 id)
 mkHereIs id addr = HereIs (Base64 id) (Base64 addr)
 mkNotFound id = NotFound (Base64 id)
 mkUpdate addr = Update (Base64 addr) Signature
+
+-- Packet processing functions
+
+isSource :: RSection -> Bool
+isSource Source{} = True
+isSource _            = False
+
+isTarget :: RSection -> Bool
+isTarget Target{} = True
+isTarget _            = False
+
+isNoRoute :: RSection -> Bool
+isNoRoute rsec = case rsec of
+  Identify -> True
+  IAm{}    -> True
+  Peer{}   -> True
+  Panic    -> True
+
+  _ -> False
+
+isValid :: RoutingHeader -> Bool
+isValid rh = any isSource rh && any isTarget rh

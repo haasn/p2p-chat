@@ -5,6 +5,7 @@ import           Crypto.Random (SystemRandom)
 
 import           Control.Monad.Error (ErrorT)
 import           Control.Monad.State.Strict (StateT)
+import           Control.Monad.Writer (WriterT)
 
 import           Data.ByteString (ByteString)
 import           Data.Map (Map)
@@ -14,7 +15,10 @@ import           Network (HostName)
 
 -- Global monad
 
-type P2P = ErrorT String (StateT P2PState IO)
+type P2P = StateT P2PState
+          (WriterT [HostName]
+          (ErrorT String
+           IO))
 
 -- Global state
 
@@ -69,8 +73,12 @@ data RSection =
   | Version (Base64 Integer)
   | Support (Base64 Integer)
   | Drop (Base64 Address)
+
+  -- No-route sections
   | Identify
   | IAm (Base64 Id) (Base64 Address)
+  | Peer (Base64 HostName)
+  | Panic
 
   -- For parsing failures
   | RUnknown ByteString

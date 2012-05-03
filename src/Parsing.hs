@@ -6,6 +6,7 @@ import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Writer (tell)
 
 import qualified Data.Map as Map
 
@@ -59,6 +60,14 @@ instance Parsable RSection where
 
     -- This is handled separately since it isn't necessarily on a Connection
     Identify -> return ()
+
+    Peer (Base64 host) -> do
+      known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
+      unless (host `elem` known) $ return ()
+
+    Panic -> do
+      -- TODO: Send PEER for known peers
+      return ()
 
     RUnknown bs ->
       throwError $ "Unknown RSection: " ++ show bs
@@ -151,15 +160,13 @@ instance Parsable Packet where
     resetContext
     parse rh
 
-    -- Check for presence of Source and Target, alternatively Identify or IAm
-    if any isSource rh && any isTarget rh
-       || any isIdentify rh || any isIAm rh
+    if isValid rh
       then do
         isme <- getIsMe
         when isme $ parse cs
 
-      else throwError
-        "Source or Target not present and not a pre-route packet, ignoring"
+      else unless (any isNoRoute rh) $
+        throwError "Not a valid packet due to missing sections"
 
 
 -- Helpers for encoding/decoding RSA and AES

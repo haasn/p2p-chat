@@ -11,8 +11,9 @@ import Data.Char (toLower)
 import qualified Data.Map as Map
 
 import Control.Applicative
-import Control.Monad.State.Strict
 import Control.Monad.Error
+import Control.Monad.State.Strict
+import Control.Monad.Writer (runWriterT)
 import Control.Exception (finally)
 
 import Control.Concurrent (forkIO)
@@ -81,7 +82,7 @@ handleInput m = forever $ do
 
 connect :: HostName -> PortNumber -> MVar P2PState -> IO ()
 connect host port mvar = do
-  h <- connectTo host (PortNumber port)
+  h <- connectTo host (PortNumber 1234)
   putStrLn $ "[?] Connected to " ++ show host ++ ':': show port
   withMVar mvar $ do
     iam <- mkIAm <$> gets pubKey <*> gets homeAddr
@@ -106,7 +107,7 @@ process h host bs = do
   parse p
 
   -- Check for no route packets
-  if any isIdentify rh || any isIAm rh
+  if any isNoRoute rh
     then mapM_ (preroute h host) rh
     else getConnection h >>= route bs p
  where
@@ -182,10 +183,15 @@ route bs (Packet rh c) conn = do
 
 -- Helper functions
 
-withMVar :: MVar P2PState -> P2P () -> IO ()
-withMVar m a = modifyMVar_ m $ \st -> do
-  (res, s) <- runStateT (runErrorT a) st
+withMVar' :: MVar P2PState -> P2P () -> IO [HostName]
+withMVar' m a = modifyMVar m $ \st -> do
+  res <- runErrorT (runWriterT (execStateT a st))
   case res of
-    Left e -> putStrLn $ "[!] " ++ e
-    _      -> return ()
-  return s
+    Left e  -> do
+      putStrLn $ "[!] " ++ e
+      return (st, [])
+
+    Right r -> return r
+
+withMVar :: MVar P2PState -> P2P () -> IO ()
+withMVar m a = withMVar' m a >>= mapM_ (\h -> connect h 1234 m)

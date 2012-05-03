@@ -34,6 +34,8 @@ instance Serializable RSection where
   encode (Drop       a  ) = sec "DROP"       [encode a]
   encode (IAm        i a) = sec "IAM"        [encode i, encode a]
   encode (Identify      ) = sec "IDENTIFY"   []
+  encode (Peer       h  ) = sec "PEER"       [encode h]
+  encode (Panic         ) = sec "PANIC"      []
 
   encode (RUnknown   _  ) = throwError "Trying to encode RUnknown"
 
@@ -49,6 +51,8 @@ instance Serializable RSection where
     ("drop"      , [a  ]) -> Drop (decode a)
     ("iam"       , [i,a]) -> IAm (decode i) (decode a)
     ("identify"  , [   ]) -> Identify
+    ("peer"      , [h  ]) -> Peer (decode h)
+    ("panic"     , [   ]) -> Panic
 
     _ -> RUnknown bs
 
