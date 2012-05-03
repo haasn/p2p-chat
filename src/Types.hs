@@ -74,6 +74,9 @@ data RSection =
   | Drop (Base64 Address)
   | Identify
   | IAm (Base64 Id) (Base64 Address)
+
+  -- For parsing failures
+  | RUnknown ByteString
  deriving (Eq, Show)
 
 data CSection =
@@ -96,6 +99,9 @@ data CSection =
   | HereIs (Base64 Id) (Base64 Address)
   | NotFound (Base64 Id)
   | Update (Base64 Address) Signature
+
+  -- For parsing failures
+  | CUnknown ByteString
  deriving (Eq, Show)
 
 -- Helpers
@@ -112,22 +118,28 @@ data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
 
 data Direction = CW | CCW deriving (Eq, Show, Read)
 
--- Safety types for Base64 and encryption; only used to enforce
--- parsing/serializing rules
+-- Safety type for Base64, only used to enforce parsing/serializing rules
 
 newtype Base64 t = Base64 t deriving (Eq, Show)
-newtype AES t    = AES t    deriving (Eq, Show)
-newtype RSA t    = RSA t    deriving (Eq, Show)
 
--- Dummy type for an RSA signature
+-- Types for encryption, these are not decidable immediately
 
-data Signature = Signature deriving (Eq, Show, Read)
+data AES t = AES t | UnAES ByteString deriving (Eq, Show)
+data RSA t = RSA t | UnRSA ByteString deriving (Eq, Show)
+
+-- Dummy type for an RSA signature, not checked immediately
+
+data Signature = Signature | Verify ByteString ByteString
+  deriving (Eq, Show, Read)
 
 -- Type class for serializing / deserializing
 
 class Serializable s where
   encode :: s -> P2P ByteString
-  decode :: ByteString -> P2P s
+  decode :: ByteString -> s
+
+class Parse s where
+  parse :: s -> P2P ()
 
 -- Serialization context, used to pass along key information
 

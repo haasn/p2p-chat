@@ -1,6 +1,6 @@
 import P2P
 import P2P.Types
-import P2P.Instances()
+import P2P.Serializing()
 import P2P.Util
 import P2P.Math
 
@@ -17,7 +17,7 @@ roundCheck :: (Serializable a, Eq a) => a -> P2P Bool
 roundCheck a = do
   enc <- encode a
   liftIO $ putStrLn (read (show enc) :: String)
-  dec <- decode enc
+  let dec = decode enc
   liftIO $ dec `seq` putStrLn "-----"
 
   return $ a == dec
@@ -37,8 +37,6 @@ tests = do
     [ roundCheck (12345 :: Integer)
 
     , roundCheck $ Base64 (12345 :: Integer)
-    , roundCheck $ Base64 (RSA (12345 :: Integer))
-    , roundCheck $ Base64 (AES (12345 :: Integer))
     , roundCheck $ pack' "Hello, world!"
 
     , roundCheck "Hello, world!"
@@ -61,8 +59,6 @@ tests = do
 
     , roundCheck $ Target TGlobal Nothing
     , roundCheck $ Target Approx (Just (Base64 0.5))
-    , roundCheck $ Source (Base64 pub) Signature
-    , roundCheck $ SourceAddr (Base64 0.12345) Signature
     , roundCheck $ Version (Base64 1)
     , roundCheck $ Support (Base64 2)
     , roundCheck $ Drop (Base64 0.12345)
@@ -77,21 +73,15 @@ tests = do
     , roundCheck $ WhoIs (Base64 "nand")
     , roundCheck $ ThisIs (Base64 "nand") (Base64 pub)
     , roundCheck $ NoExist (Base64 "nand")
-    , roundCheck $ Register (Base64 "nand") Signature
     , roundCheck $ Exist (Base64 "nand")
 
     , roundCheck $ WhereIs (Base64 pub)
     , roundCheck $ HereIs (Base64 pub) (Base64 0.12345)
     , roundCheck $ NotFound (Base64 pub)
-    , roundCheck $ Update (Base64 0.12345) Signature
 
     -- Hashing checks
     , showOutput $ show (hash pub)
     , roundCheck $ Base64 (chanKey "#foobar")
-
-    -- Full body packet test
-
-    , roundCheck $ Packet [Identify] []
     ]
 
 main :: IO ()

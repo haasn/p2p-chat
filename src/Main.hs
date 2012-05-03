@@ -28,7 +28,9 @@ import System.Environment (getArgs)
 
 import P2P
 import P2P.Types
-import P2P.Instances
+import P2P.Sending
+import P2P.Serializing
+import P2P.Parsing
 import P2P.Math
 import P2P.Util
 
@@ -100,7 +102,10 @@ runThread h host m = do
 
 process :: Handle -> HostName -> ByteString -> P2P ()
 process h host bs = do
-  p@(Packet rh c) <- decode bs
+  let p@(Packet rh c) = decode bs
+
+  -- Parse right after decoding because sigs are verified here
+  parse p
 
   -- Check for no route packets
   if any isIdentify rh || any isIAm rh
@@ -156,6 +161,8 @@ route bs (Packet rh c) conn = do
         -- send to next CW connection
         conn <- head <$> gets cwConn
         cSendRaw conn bs
+
+    -- TODO: Implement routing modes Exact and Approx
 
     Exact -> do
       let Just (Base64 adr) = a

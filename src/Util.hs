@@ -123,13 +123,13 @@ fromMaybe :: Maybe a -> P2P a
 fromMaybe Nothing  = throwError "Nothing in fromMaybe"
 fromMaybe (Just p) = return p
 
-fromEither :: Either String r -> P2P r
-fromEither (Left s)  = throwError s
-fromEither (Right r) = return r
+fromEither :: Either String r -> r
+fromEither (Left s)  = error s
+fromEither (Right r) = r
 
-fromEither' :: Show s => Either s r -> P2P r
-fromEither' (Left s)  = throwError $ show s
-fromEither' (Right r) = return r
+fromEither' :: Show s => Either s r -> r
+fromEither' (Left s)  = error $ show s
+fromEither' (Right r) = r
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True
