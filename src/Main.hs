@@ -1,6 +1,7 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import Network
+import Prelude hiding (catch)
 
 import Codec.Crypto.RSA (generateKeyPair)
 import Crypto.Random (newGenIO, SystemRandom)
@@ -14,14 +15,15 @@ import Control.Applicative
 import Control.Monad.Error
 import Control.Monad.State.Strict
 import Control.Monad.Writer (runWriterT)
-import Control.Exception (finally)
+import Control.Exception hiding (handle)
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar hiding (withMVar)
 
 import GHC.IO.Handle hiding (hGetLine)
+import Network
 
-import System.Exit (exitSuccess)
+import System.Exit (ExitCode, exitSuccess)
 import System.Environment (getArgs)
 
 import P2P
@@ -74,12 +76,18 @@ main = withSocketsDo $ do
   handleInput mvar
 
 handleInput :: MVar P2PState -> IO ()
-handleInput m = forever $ do
+handleInput m = forever . handle $ do
   line <- map toLower <$> getLine
 
   case line of
     "quit" -> exitSuccess
-    "test" -> connect m defaultPort "localhost"
+    "test.connect" -> connect m defaultPort "localhost"
+
+    "test.global" -> withMVar m $
+      sendGlobal [mkMessage MGlobal "Hello, world!"]
+
+    "test.dump" -> withMVar m $
+      get >>= throwError . show
 
     _ -> putStrLn "[$] Unrecognized input"
 
@@ -188,7 +196,7 @@ route bs (Packet rh c) conn = do
 
 withMVar' :: MVar P2PState -> P2P () -> IO [HostName]
 withMVar' m a = modifyMVar m $ \st -> do
-  res <- runErrorT (runWriterT (execStateT a st))
+  res <- runErrorT (runWriterT $ execStateT a st)
   case res of
     Left e  -> do
       putStrLn $ "[!] " ++ e
@@ -198,3 +206,10 @@ withMVar' m a = modifyMVar m $ \st -> do
 
 withMVar :: MVar P2PState -> P2P () -> IO ()
 withMVar m a = withMVar' m a >>= mapM_ (connect m defaultPort)
+
+handle :: IO () -> IO ()
+handle a = a `catches`
+  [ Handler $ \(e :: ExitCode)       -> throwIO e
+  , Handler $ \(e :: AsyncException) -> throwIO e
+  , Handler $ \(e :: SomeException)  -> putStrLn ("[*] " ++ show e)
+  ]
