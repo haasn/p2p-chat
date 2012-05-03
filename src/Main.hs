@@ -35,7 +35,7 @@ import P2P.Math
 import P2P.Util
 
 version :: String
-version = "0.1"
+version = "0.0"
 
 defaultPort :: PortNumber
 defaultPort = 1234
