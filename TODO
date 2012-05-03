@@ -1,7 +1,0 @@
-Some open tasks:
-
- - Implement rounting modes Exact and Approx
-
- - Check and set ctxIsMe for Approx packets
-
- - Implement connection creation logic and panic states
