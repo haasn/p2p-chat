@@ -49,6 +49,9 @@ newState = do
     , context   = nullContext
     }
 
+defaultPort :: PortNumber
+defaultPort = 1234
+
 main :: IO ()
 main = withSocketsDo $ do
   args  <- getArgs
@@ -56,7 +59,7 @@ main = withSocketsDo $ do
   mvar  <- newMVar state
   sock  <- let port = case args of
                         [p] -> fromIntegral $ read p
-                        _   -> 1234
+                        _   -> defaultPort
            in listenOn (PortNumber port)
 
   forkIO $ (`finally` sClose sock) . forever $ do
@@ -76,13 +79,13 @@ handleInput m = forever $ do
 
   case line of
     "quit" -> exitSuccess
-    "test" -> connect "localhost" 1234 m
+    "test" -> connect m defaultPort "localhost"
 
     _ -> putStrLn "[$] Unrecognized input"
 
-connect :: HostName -> PortNumber -> MVar P2PState -> IO ()
-connect host port mvar = do
-  h <- connectTo host (PortNumber 1234)
+connect :: MVar P2PState -> PortNumber -> HostName -> IO ()
+connect mvar port host = do
+  h <- connectTo host (PortNumber defaultPort)
   putStrLn $ "[?] Connected to " ++ show host ++ ':': show port
   withMVar mvar $ do
     iam <- mkIAm <$> gets pubKey <*> gets homeAddr
@@ -194,4 +197,4 @@ withMVar' m a = modifyMVar m $ \st -> do
     Right r -> return r
 
 withMVar :: MVar P2PState -> P2P () -> IO ()
-withMVar m a = withMVar' m a >>= mapM_ (\h -> connect h 1234 m)
+withMVar m a = withMVar' m a >>= mapM_ (connect m defaultPort)
