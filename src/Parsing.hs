@@ -6,7 +6,6 @@ import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
-import           Control.Monad.Writer (tell)
 
 import qualified Data.Map as Map
 
@@ -53,21 +52,12 @@ instance Parsable RSection where
     Drop (Base64 addr) ->
       forgetAddr addr
 
-    IAm (Base64 id) (Base64 addr) -> do
-      setContextId id
-      setContextAddr addr
-      insertAddr id addr
-
-    -- This is handled separately since it isn't necessarily on a Connection
+    -- These are handled separately since they
+    -- aren't necessarily on a Connection
+    IAm{}    -> return ()
     Identify -> return ()
-
-    Peer (Base64 host) -> do
-      known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
-      unless (host `elem` known) $ return ()
-
-    Panic -> do
-      -- TODO: Send PEER for known peers
-      return ()
+    Peer{}   -> return ()
+    Panic    -> return ()
 
     RUnknown bs ->
       throwError $ "Unknown RSection: " ++ show bs

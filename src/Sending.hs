@@ -1,7 +1,6 @@
 module P2P.Sending where
 
 import           Control.Applicative
-import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
 
@@ -32,14 +31,14 @@ hSendRaw h bs = do
   liftIO $ hPut h bs
   liftIO $ hFlush h
 
-sendGlobal :: [CSection] -> P2P ()
+sendGlobal :: Content -> P2P ()
 sendGlobal cs = do
   base <- makeHeader
   let rh = mkTarget TGlobal Nothing : base
 
   (head <$> gets cwConn) >>= send (Packet rh cs)
 
-sendAddr :: Address -> [CSection] -> P2P ()
+sendAddr :: Address -> Content -> P2P ()
 sendAddr a cs = do
   base <- makeHeader
   home <- gets homeAddr
@@ -49,12 +48,12 @@ sendAddr a cs = do
     CW  -> (head <$> gets  cwConn) >>= send (Packet rh cs)
     CCW -> (head <$> gets ccwConn) >>= send (Packet rh cs)
 
-reply :: [CSection] -> P2P ()
+reply :: Content -> P2P ()
 reply cs = do
   addr <- replyAddr
   case addr of
-    Just a  -> sendAddr  a cs
-    Nothing -> sendGlobal  cs
+    Just a  -> sendAddr a cs
+    Nothing -> sendGlobal cs
 
 replyAddr :: P2P (Maybe Address)
 replyAddr = do
@@ -64,10 +63,10 @@ replyAddr = do
   case addr of
     Just _ -> return addr
     Nothing -> case id of
-      Nothing -> throwError "No address or id in current context"
+      Nothing -> return Nothing
       Just id -> Map.lookup id <$> gets locTable
 
-replyMirror :: [CSection] -> P2P ()
+replyMirror :: Content -> P2P ()
 replyMirror cs = do
   addr <- replyAddr
   case addr of
@@ -92,5 +91,4 @@ makeHeader = do
     , mkSourceAddr addr
     , mkVersion 1
     , mkSupport 1
-
     ]

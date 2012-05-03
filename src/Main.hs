@@ -14,7 +14,7 @@ import qualified Data.Map as Map
 import Control.Applicative
 import Control.Monad.Error
 import Control.Monad.State.Strict
-import Control.Monad.Writer (runWriterT)
+import Control.Monad.Writer (runWriterT, tell)
 import Control.Exception hiding (handle)
 
 import Control.Concurrent (forkIO)
@@ -147,7 +147,16 @@ preroute h _ Identify = do
   myAddr <- gets homeAddr
   hSend h $ Packet [mkIAm myId myAddr] []
 
-preroute h host (IAm (Base64 id) (Base64 adr)) = addConnection h host id adr
+preroute h _ Panic = do
+  known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
+  hSend h $ Packet (map mkPeer known) []
+
+preroute _ _ (Peer (Base64 host)) = do
+  known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
+  unless (host `elem` known) $ tell [host]
+
+preroute h host (IAm (Base64 id) (Base64 adr)) =
+  addConnection h host id adr
 
 -- Ignore everything else
 preroute _ _ _ = return ()
@@ -155,12 +164,10 @@ preroute _ _ _ = return ()
 -- Route a post-Connection package
 
 route :: ByteString -> Packet -> Connection -> P2P ()
-route bs (Packet rh c) conn = do
-  -- Debugging purposes
-  liftIO . putStrLn $ show (Packet rh c)
-
+route bs (Packet rh _) conn = do
   myId   <- gets pubKey
   myAddr <- gets homeAddr
+  isMe <- getIsMe
 
   let Just (Source (Base64 id) _) = find isSource rh
   let Just (Target tt a) = find isTarget rh
@@ -168,29 +175,23 @@ route bs (Packet rh c) conn = do
   case tt of
     TGlobal ->
       unless (id == myId) $ do
-        -- send to next CW connection
+        -- Send to next CW connection
         conn <- head <$> gets cwConn
         cSendRaw conn bs
 
-    -- TODO: Implement routing modes Exact and Approx
+    -- TODO: Implement routing mode Exact
 
     Exact -> do
       let Just (Base64 adr) = a
-      unless (adr == myAddr) $ case dir myAddr adr of
-        CW -> return ()  -- send to best CW connection
-        CCW -> return () -- send to best CCW connection
+      unless isMe $ case dir myAddr adr of
+        CW  -> return () -- Send to best CW connection
+        CCW -> return () -- Send to best CCW connection
 
     Approx -> do
       let Just (Base64 adr) = a
-      right <- head <$> gets cwConn
-      left  <- head <$> gets ccwConn
-
-      let dl = dist adr (remoteAddr  left)
-      let dr = dist adr (remoteAddr right)
-      let dm = dist adr myAddr
-
-      when (dr < dm && dr < dl) $ return () -- send to best CW connection
-      when (dl < dm && dl < dr) $ return () -- send to best CCW connection
+      unless isMe $ case dir myAddr adr of
+        CW  -> head <$> gets  cwConn >>= (`cSendRaw` bs)
+        CCW -> head <$> gets ccwConn >>= (`cSendRaw` bs)
 
 -- Helper functions
 
