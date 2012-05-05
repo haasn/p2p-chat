@@ -112,10 +112,16 @@ instance Parsable CSection where
       insertAddr id addr
       replyMirror [mkHereIs id addr]
 
-    -- TODO: Notify the user of these somehow
-    NoExist  _ -> return ()
-    NotFound _ -> return ()
-    Exist    _ -> return ()
+    -- Failure messages
+
+    NoExist (Base64 name) -> liftIO . putStrLn $
+      "[!] A DHT lookup for “" ++ name ++ "” failed with NOEXIST"
+
+    NotFound (Base64 adr) -> liftIO . putStrLn $
+      "[!] A DHT lookup for address “" ++ show adr ++ "” failed with NOTFOUND"
+
+    Exist (Base64 name) -> liftIO . putStrLn $
+      "[!] Registration for “" ++ name ++ "” failed: Entry already exists"
 
     Message t m s -> do
       parse s
