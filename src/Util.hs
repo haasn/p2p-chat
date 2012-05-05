@@ -1,7 +1,5 @@
 module P2P.Util where
 
-import           Control.Monad.Error (throwError)
-
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -26,17 +24,13 @@ wrapLazy f = fromLazy . f . toLazy
 
 -- Helper functions
 
-fromMaybe :: Maybe a -> P2P a
-fromMaybe Nothing  = throwError "Nothing in fromMaybe"
-fromMaybe (Just p) = return p
+fromRight :: Either String r -> r
+fromRight (Left s)  = error s
+fromRight (Right r) = r
 
-fromEither :: Either String r -> r
-fromEither (Left s)  = error s
-fromEither (Right r) = r
-
-fromEither' :: Show s => Either s r -> r
-fromEither' (Left s)  = error $ show s
-fromEither' (Right r) = r
+fromRight' :: Show s => Either s r -> r
+fromRight' (Left s)  = error $ show s
+fromRight' (Right r) = r
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

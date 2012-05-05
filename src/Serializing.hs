@@ -103,7 +103,7 @@ instance Serializable ByteString where
 
 instance Serializable Text where
   encode = return . encodeUtf8
-  decode = fromEither' . decodeUtf8'
+  decode = fromRight' . decodeUtf8'
 
 instance Serializable String where
   encode = encode . (fromString :: String -> Text)
@@ -165,7 +165,7 @@ instance Serializable PublicKey where
 
 instance Serializable s => Serializable (Base64 s) where
   encode (Base64 s) = B64.encode <$> encode s
-  decode            = Base64 . decode . fromEither . B64.decode
+  decode            = Base64 . decode . fromRight . B64.decode
 
 instance Serializable s => Serializable (RSA s) where
   encode (RSA s)   = join $ encryptRSA <$> getContextId <*> encode s
