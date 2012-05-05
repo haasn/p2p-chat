@@ -1,18 +1,19 @@
 module Main where
 
-import P2P.Types
-import P2P.Serializing()
-import P2P.Util
-import P2P.Math
+import           Codec.Crypto.RSA (generateKeyPair)
 
-import Control.Monad.Trans (liftIO)
-import Control.Monad.State.Strict (get, put, evalStateT)
-import Control.Monad.Error (runErrorT)
+import           Control.Monad.Error (runErrorT)
+import           Control.Monad.State.Strict (get, put, evalStateT)
+import           Control.Monad.Trans (liftIO)
 
-import Crypto.Random (newGenIO, SystemRandom)
-import Codec.Crypto.RSA (generateKeyPair)
+import           Crypto.Random (newGenIO, SystemRandom)
 
 import qualified Data.Map as Map
+
+import           P2P.Types
+import           P2P.Serializing()
+import           P2P.Util
+import           P2P.Math
 
 roundCheck :: (Serializable a, Eq a) => a -> P2P Bool
 roundCheck a = do

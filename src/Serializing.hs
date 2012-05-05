@@ -2,24 +2,25 @@
 
 module P2P.Serializing where
 
+import           Codec.Crypto.RSA (PublicKey(..))
+
 import           Control.Applicative
 import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 
-import           Codec.Crypto.RSA (PublicKey(..))
-
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
-import           Data.String (fromString)
 import           Data.Char (toLower)
+import           Data.String (fromString)
 
 import           Data.Text (Text, unpack)
 import           Data.Text.Encoding
 
 import           P2P
+import           P2P.Crypto
 import           P2P.Types
 import           P2P.Util
 
@@ -27,8 +28,8 @@ import           P2P.Util
 
 instance Serializable RSection where
   encode (Target     t a) = sec "TARGET"     [encode t, encode a]
-  encode (Source     i _) = sec "SOURCE"     [encode i, sign]
-  encode (SourceAddr a _) = sec "SOURCEADDR" [encode a, sign]
+  encode (Source     i _) = sec "SOURCE"     [encode i, signLast]
+  encode (SourceAddr a _) = sec "SOURCEADDR" [encode a, signLast]
   encode (Version    v  ) = sec "VERSION"    [encode v]
   encode (Support    v  ) = sec "SUPPORT"    [encode v]
   encode (Drop       a  ) = sec "DROP"       [encode a]
@@ -57,21 +58,21 @@ instance Serializable RSection where
     _ -> RUnknown bs
 
 instance Serializable CSection where
-  encode (Message t m _) = sec "MESSAGE" [encode t, m', sign]
+  encode (Message t m _) = sec "MESSAGE" [encode t, m', signLast]
     where m' = case t of
             MGlobal -> encode $ Base64 m
             _       -> encode $ Base64 (AES m)
 
-  encode (Key      p _) = sec "KEY"      [encode p, sign]
+  encode (Key      p _) = sec "KEY"      [encode p, signLast]
   encode (WhoIs      n) = sec "WHOIS"    [encode n]
   encode (ThisIs   n i) = sec "THISIS"   [encode n, encode i]
   encode (NoExist    n) = sec "NOEXIST"  [encode n]
-  encode (Register n _) = sec "REGISTER" [encode n, sign]
+  encode (Register n _) = sec "REGISTER" [encode n, signLast]
   encode (Exist      n) = sec "EXIST"    [encode n]
   encode (WhereIs    i) = sec "WHEREIS"  [encode i]
   encode (HereIs   i a) = sec "HEREIS"   [encode i, encode a]
   encode (NotFound   i) = sec "NOTFOUND" [encode i]
-  encode (Update   a _) = sec "UPDATE"   [encode a, sign]
+  encode (Update   a _) = sec "UPDATE"   [encode a, signLast]
 
   encode (CUnknown _  ) = throwError "Trying to encode CUnknown"
 
@@ -175,7 +176,7 @@ instance Serializable s => Serializable (AES s) where
 -- Parameter grouping logic
 
 group' :: [P2P ByteString] -> P2P ByteString
-group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> mapM upd l
+group' l = (BS.intercalate (pack " ") . filter (not . BS.null)) <$> mapM upd l
   where
     upd :: P2P ByteString -> P2P ByteString
     upd a = do
@@ -184,7 +185,7 @@ group' l = (BS.intercalate (pack' " ") . filter (not . BS.null)) <$> mapM upd l
       return res
 
 ungroup' :: ByteString -> [ByteString]
-ungroup' = BS.split $ ord' ' '
+ungroup' = BS.split $ ord ' '
 
 sec :: String -> [P2P ByteString] -> P2P ByteString
 sec c l = group' $ encode c : l
@@ -196,22 +197,22 @@ parse' (x:xs) = (map toLower (decode x), xs)
 -- Section grouping logic
 
 instance Serializable RoutingHeader where
-  encode rh = BS.intercalate (pack' "\n") <$> mapM encode rh
-  decode    = map decode . BS.split (ord' '\n')
+  encode rh = BS.intercalate (pack "\n") <$> mapM encode rh
+  decode    = map decode . BS.split (ord '\n')
 
 instance Serializable Content where
-  encode rh = BS.intercalate (pack' "\n") <$> mapM encode rh
-  decode    = map decode . BS.split (ord' '\n')
+  encode rh = BS.intercalate (pack "\n") <$> mapM encode rh
+  decode    = map decode . BS.split (ord '\n')
 
 instance Serializable Packet where
   encode (Packet rh c) = BS.concat <$> sequence
-    [encode rh, return $ pack' "\n\n", encode c]
+    [encode rh, return $ pack "\n\n", encode c]
 
                                  -- Drop the \n\n too
   decode bs = Packet (decode rh) (decode $ BS.drop 2 c)
-    where (rh, c) = BS.breakSubstring (pack' "\n\n") bs
+    where (rh, c) = BS.breakSubstring (pack "\n\n") bs
 
 -- Helper functions for RSA serialization
 
-sign :: P2P ByteString
-sign = (Base64 .: sign' <$> gets privKey <*> getLastField) >>= encode
+signLast :: P2P ByteString
+signLast = (Base64 .: sign <$> gets privKey <*> getLastField) >>= encode

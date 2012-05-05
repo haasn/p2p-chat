@@ -1,6 +1,7 @@
 #!/bin/bash
 FILES="
 src/Math.hs
+src/Crypto.hs
 src/Util.hs
 src/Types.hs
 src/P2P.hs

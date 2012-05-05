@@ -1,38 +1,39 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import Prelude hiding (catch)
+import           Prelude hiding (catch)
 
-import Codec.Crypto.RSA (generateKeyPair)
-import Crypto.Random (newGenIO, SystemRandom)
+import           Codec.Crypto.RSA (generateKeyPair)
 
-import Data.List (find)
-import Data.ByteString (ByteString, hGetSome)
-import Data.Char (toLower)
+import           Control.Applicative
+import           Control.Concurrent (forkIO)
+import           Control.Concurrent.MVar hiding (withMVar)
+import           Control.Exception hiding (handle)
+import           Control.Monad.Error
+import           Control.Monad.State.Strict
+import           Control.Monad.Writer (runWriterT, tell)
+
+import           Crypto.Random (newGenIO, SystemRandom)
+
+import           Data.ByteString (ByteString, hGetSome)
+import           Data.Char (toLower)
+import           Data.List (find)
 import qualified Data.Map as Map
 
-import Control.Applicative
-import Control.Monad.Error
-import Control.Monad.State.Strict
-import Control.Monad.Writer (runWriterT, tell)
-import Control.Exception hiding (handle)
+import           GHC.IO.Handle hiding (hGetLine)
 
-import Control.Concurrent (forkIO)
-import Control.Concurrent.MVar hiding (withMVar)
+import           Network
 
-import GHC.IO.Handle hiding (hGetLine)
-import Network
+import           System.Environment (getArgs)
+import           System.Exit (ExitCode, exitSuccess)
 
-import System.Exit (ExitCode, exitSuccess)
-import System.Environment (getArgs)
-
-import P2P
-import P2P.Types
-import P2P.Sending
-import P2P.Serializing()
-import P2P.Parsing()
-import P2P.Math
-import P2P.Util
+import           P2P
+import           P2P.Math
+import           P2P.Parsing()
+import           P2P.Sending
+import           P2P.Serializing()
+import           P2P.Types
+import           P2P.Util
 
 version :: String
 version = "0.0"

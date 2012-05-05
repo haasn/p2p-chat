@@ -5,15 +5,14 @@ import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
 
 import           Data.ByteString (ByteString, hPut)
-
 import qualified Data.Map as Map
 
 import           GHC.IO.Handle (Handle, hFlush)
 
-import           P2P.Types
-import           P2P.Serializing()
-import           P2P.Util
 import           P2P.Math
+import           P2P.Serializing()
+import           P2P.Types
+import           P2P.Util
 
 -- Send a packet
 

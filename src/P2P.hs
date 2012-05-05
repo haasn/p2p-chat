@@ -1,19 +1,22 @@
 module P2P where
 
-import           Network (HostName)
-
-import           Crypto.Random (SystemRandom)
+import           Control.Applicative
+import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict
 
-import qualified Data.Map as Map
-import qualified Data.Foldable as F (forM_)
-import           Data.ByteString (ByteString)
-import           Data.List (find)
+import           Crypto.Random (SystemRandom)
 
-import           P2P.Types
-import           P2P.Math
+import           Data.ByteString (ByteString)
+import qualified Data.Foldable as F (forM_)
+import           Data.List (find)
+import qualified Data.Map as Map
 
 import           GHC.IO.Handle
+
+import           Network (HostName)
+
+import           P2P.Math
+import           P2P.Types
 
 -- Wrapper functions for the global state
 
@@ -105,10 +108,39 @@ setLastField f = modifyContext $ \ctx -> ctx { lastField = Just f }
 loadContext :: Id -> P2P ()
 loadContext id = do
   state <- get
-  -- liftIO . putStrLn $ "[?] Loading context id: " ++ show id
   setContextId id
   Map.lookup id (keyTable state) `F.forM_` setContextKey
   Map.lookup id (locTable state) `F.forM_` setContextAddr
+
+-- Wrapper functions for the Context
+
+getContextId :: P2P Id
+getContextId = do
+  id <- ctxId <$> gets context
+  case id of
+    Nothing -> throwError "No remote ID in current context"
+    Just i  -> return i
+
+getContextAddr :: P2P Address
+getContextAddr = do
+  addr <- ctxAddr <$> gets context
+  case addr of
+    Nothing -> throwError "No remote address in current context"
+    Just a  -> return a
+
+getContextKey :: P2P AESKey
+getContextKey = do
+  key <- ctxKey <$> gets context
+  case key of
+    Nothing -> throwError "No remote key in current context"
+    Just k  -> return k
+
+getLastField :: P2P ByteString
+getLastField = do
+  field <- lastField <$> gets context
+  case field of
+    Nothing -> throwError "No previously serialized field"
+    Just f  -> return f
 
 -- Map processing
 
@@ -127,3 +159,25 @@ insertId name id = modify $ \st ->
 insertKey :: Id -> AESKey -> P2P ()
 insertKey id key = modify $ \st ->
   st { keyTable = Map.insert id key (keyTable st) }
+
+-- Packet processing functions
+
+isSource :: RSection -> Bool
+isSource Source{} = True
+isSource _        = False
+
+isTarget :: RSection -> Bool
+isTarget Target{} = True
+isTarget _        = False
+
+isNoRoute :: RSection -> Bool
+isNoRoute rsec = case rsec of
+  Identify -> True
+  IAm{}    -> True
+  Peer{}   -> True
+  Panic    -> True
+
+  _ -> False
+
+isValid :: RoutingHeader -> Bool
+isValid rh = any isSource rh && any isTarget rh

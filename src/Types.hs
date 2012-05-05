@@ -1,16 +1,18 @@
 module P2P.Types where
 
 import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
-import           Crypto.Random (SystemRandom)
 
 import           Control.Monad.Error (ErrorT)
 import           Control.Monad.State.Strict (StateT)
 import           Control.Monad.Writer (WriterT)
 
+import           Crypto.Random (SystemRandom)
+
 import           Data.ByteString (ByteString)
 import           Data.Map (Map)
 
 import           GHC.IO.Handle (Handle)
+
 import           Network (HostName)
 
 -- Global monad

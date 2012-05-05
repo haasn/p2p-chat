@@ -10,9 +10,10 @@ import           Control.Monad.Trans (liftIO)
 import qualified Data.Map as Map
 
 import           P2P
+import           P2P.Crypto
+import           P2P.Sending
 import           P2P.Types
 import           P2P.Util
-import           P2P.Sending
 
 instance Parsable RSection where
   parse rsec = case rsec of
@@ -134,7 +135,7 @@ instance Parsable Signature where
     let (Base64 s') = decode s
     pk <- getContextId
 
-    unless (verify' pk m' s') $ throwError "Signature does not match id"
+    unless (verify pk m' s') $ throwError "Signature does not match id"
 
 -- Full packet parsing
 
