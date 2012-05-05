@@ -6,15 +6,11 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
-import           Data.Binary.IEEE754
-import           Data.Binary.Put (runPut)
-import           Data.Binary.Get (runGet)
 import qualified Data.Char (ord)
 import           Data.String (fromString)
 import           Data.Text()
 import           Data.Text.Encoding (encodeUtf8)
 
-import           P2P.Math
 import           P2P.Types
 
 -- Deal with mixtures of strict and lazy ByteStrings
@@ -51,20 +47,6 @@ pack = encodeUtf8 . fromString
 
 ord :: Integral a => Char -> a
 ord = fromIntegral . Data.Char.ord
-
-encIntegral :: Integral a => a -> ByteString
-encIntegral = BS.pack . toWord8
-
-decIntegral :: Integral a => ByteString -> a
-decIntegral = fromWord8 . BS.unpack
-
--- Convert a double to and from bytestrings
-
-encDouble :: Double -> ByteString
-encDouble = fromLazy . runPut . putFloat64le
-
-decDouble :: ByteString -> Double
-decDouble = runGet getFloat64le . toLazy
 
 -- Wrappers for section constructors
 

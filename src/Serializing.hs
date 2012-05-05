@@ -9,6 +9,9 @@ import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 
+import           Data.Binary.IEEE754
+import           Data.Binary.Put (runPut)
+import           Data.Binary.Get (runGet)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Base64 as B64 (encode, decode)
@@ -21,6 +24,7 @@ import           Data.Text.Encoding
 
 import           P2P
 import           P2P.Crypto
+import           P2P.Math
 import           P2P.Types
 import           P2P.Util
 
@@ -216,3 +220,17 @@ instance Serializable Packet where
 
 signLast :: P2P ByteString
 signLast = (Base64 .: sign <$> gets privKey <*> getLastField) >>= encode
+
+-- Serialization functions for numeric types
+
+encIntegral :: Integral a => a -> ByteString
+encIntegral = BS.pack . toWord8
+
+decIntegral :: Integral a => ByteString -> a
+decIntegral = fromWord8 . BS.unpack
+
+encDouble :: Double -> ByteString
+encDouble = fromLazy . runPut . putFloat64le
+
+decDouble :: ByteString -> Double
+decDouble = runGet getFloat64le . toLazy
