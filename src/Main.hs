@@ -39,7 +39,7 @@ version :: String
 version = "0.0"
 
 defaultPort :: PortNumber
-defaultPort = 1234
+defaultPort = 1027
 
 newState :: IO P2PState
 newState = do
