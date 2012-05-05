@@ -11,6 +11,7 @@ import qualified Data.Map as Map
 
 import           P2P
 import           P2P.Crypto
+import           P2P.Math
 import           P2P.Sending
 import           P2P.Types
 import           P2P.Util
@@ -18,6 +19,8 @@ import           P2P.Util
 instance Parsable RSection where
   parse rsec = case rsec of
     Target tt ma -> do
+      myAdr <- gets homeAddr
+
       -- Separate and decode the address
       Base64 adr <-
         if tt == TGlobal
@@ -28,13 +31,15 @@ instance Parsable RSection where
 
       case tt of
         TGlobal -> setIsMe
-        Exact  -> do
-          myadr <- gets homeAddr
-          when (myadr == adr) setIsMe
 
-        Approx ->
-          return ()
-          -- TODO: Check neighbour distances and setIsMe here
+        Exact   -> when (myAdr == adr) setIsMe
+
+        Approx  -> do
+          next <- head <$> gets (case dir myAdr adr of
+                                  CW  ->  cwConn
+                                  CCW -> ccwConn)
+          when (dist adr myAdr < dist adr (remoteAddr next))
+            setIsMe
 
     Source (Base64 id) s ->
       loadContext id >> parse s
