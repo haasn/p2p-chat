@@ -15,7 +15,7 @@ import           Control.Monad.Writer (runWriterT, tell)
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
-import           Data.ByteString (ByteString, hGetSome)
+import           Data.ByteString (ByteString, hGetLine)
 import           Data.Char (toLower)
 import           Data.List (find)
 import qualified Data.Map as Map
@@ -111,8 +111,7 @@ runThread :: Handle -> HostName -> MVar P2PState -> IO ()
 runThread h host m = do
   eof <- hIsEOF h
   unless eof $ do
-   -- FIXME: Make this not length dependent
-   packet <- hGetSome h 2048
+   packet <- hGetLine h
    withMVar m (process h host packet)
    runThread h host m
 

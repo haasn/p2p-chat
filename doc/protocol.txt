@@ -13,12 +13,12 @@ interactions.
 
 A single packet will be divided into “sections”; each of these consist of a
 keyword as well as multiple parameters. Sections will be separated by
-newlines, with keywords/parameters being separated by spaces. A field which
+semicolons, with keywords/parameters being separated by spaces. A field which
 needs to contain spaces, eg. as part of a message or name, will be specified
 as base 64 encoded.
 
 The separation between the routing header and the content is to be done using
-a completely empty section; in other words, an empty line
+a ‘|’ character.
 
 Integers will be encoded as arbitrary precision integers using a little endian
 coding scheme. Floating point numbers will be encoded as little endian 64-bit

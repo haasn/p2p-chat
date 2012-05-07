@@ -201,20 +201,20 @@ section c l = joinSection $ encode c : l
 -- Section grouping logic
 
 instance Serializable RoutingHeader where
-  encode rh = BS.intercalate (pack "\n") <$> mapM encode rh
-  decode    = map decode . BS.split (ord '\n')
+  encode rh = BS.intercalate (pack ";") <$> mapM encode rh
+  decode    = map decode . BS.split (ord ';')
 
 instance Serializable Content where
-  encode rh = BS.intercalate (pack "\n") <$> mapM encode rh
-  decode    = map decode . BS.split (ord '\n')
+  encode rh = BS.intercalate (pack ";") <$> mapM encode rh
+  decode    = map decode . BS.split (ord ';')
 
 instance Serializable Packet where
   encode (Packet rh c) = BS.concat <$> sequence
-    [encode rh, return $ pack "\n\n", encode c]
+    [encode rh, return $ pack "|", encode c]
 
-                                 -- Drop the \n\n too
-  decode bs = Packet (decode rh) (decode $ BS.drop 2 c)
-    where (rh, c) = BS.breakSubstring (pack "\n\n") bs
+                                 -- Drop the ‘|’ too
+  decode bs = Packet (decode rh) (decode $ BS.drop 1 c)
+    where (rh, c) = BS.breakSubstring (pack "|") bs
 
 -- Helper function for RSA serialization
 

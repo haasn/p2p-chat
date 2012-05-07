@@ -7,7 +7,7 @@ import           Control.Monad.Trans (liftIO)
 import           Data.ByteString (ByteString, hPut)
 import qualified Data.Map as Map
 
-import           GHC.IO.Handle (Handle, hFlush)
+import           GHC.IO.Handle (Handle, hFlush, hPutChar)
 
 import           P2P.Math
 import           P2P.Serializing()
@@ -28,6 +28,7 @@ cSendRaw = hSendRaw . socket
 hSendRaw :: Handle -> ByteString -> P2P ()
 hSendRaw h bs = do
   liftIO $ hPut h bs
+  liftIO $ hPutChar h '\n'
   liftIO $ hFlush h
 
 sendGlobal :: Content -> P2P ()
