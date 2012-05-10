@@ -213,7 +213,7 @@ instance Serializable Packet where
     [encode rh, return $ pack "|", encode c]
 
                                  -- Drop the ‘|’ too
-  decode bs = Packet (decode rh) (decode $ BS.drop 1 c)
+  decode bs = Packet (decode rh) (decode $ BS.tail c)
     where (rh, c) = BS.breakSubstring (pack "|") bs
 
 -- Helper function for RSA serialization
