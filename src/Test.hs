@@ -5,11 +5,13 @@ import           Codec.Crypto.RSA (generateKeyPair)
 import           Control.Monad.Error (runErrorT)
 import           Control.Monad.State.Strict (get, put, evalStateT)
 import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Writer (runWriterT)
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
 import qualified Data.Map as Map
 
+import           P2P.Crypto
 import           P2P.Types
 import           P2P.Serializing()
 import           P2P.Util
@@ -39,7 +41,7 @@ tests = do
     [ roundCheck (12345 :: Integer)
 
     , roundCheck $ Base64 (12345 :: Integer)
-    , roundCheck $ pack' "Hello, world!"
+    , roundCheck $ pack "Hello, world!"
 
     , roundCheck "Hello, world!"
     , roundCheck $ Base64 (0.12345 :: Double)
@@ -82,14 +84,14 @@ tests = do
     , roundCheck $ NotFound (Base64 pub)
 
     -- Hashing checks
-    , showOutput $ show (hash pub)
+    , showOutput $ show (hashId pub)
     , roundCheck $ Base64 (chanKey "#foobar")
     ]
 
 main :: IO ()
 main = do
   state <- newState
-  res   <- evalStateT (runErrorT tests) state
+  res   <- runErrorT (runWriterT $ evalStateT tests state)
   print res
 
 newState :: IO P2PState
