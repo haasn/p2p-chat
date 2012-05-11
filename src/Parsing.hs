@@ -38,7 +38,7 @@ instance Parsable RSection where
           next <- head <$> gets (case dir myAdr adr of
                                   CW  ->  cwConn
                                   CCW -> ccwConn)
-          when (dist adr myAdr < dist adr (remoteAddr next))
+          when (dist adr myAdr <= dist adr (remoteAddr next))
             setIsMe
 
     Source (Base64 id) s ->
