@@ -185,15 +185,18 @@ route bs (Packet rh _) conn = do
         cSendRaw conn bs
 
     Exact -> let
+        -- Local name for the address, pattern matched to remove type clutter
         Just (Base64 adr) = a
 
-        sendExact :: Direction -> [Connection] -> P2P ()
-        sendExact d [] = throwError $
+        -- The Exact mode routing function, defined here since it references
+        -- the local names adr and d
+        sendExact :: [Connection] -> P2P ()
+        sendExact [] = throwError $
           "Failed sending packet " ++ show d ++ ": no connections"
 
-        sendExact _ [last] = cSendRaw last bs
+        sendExact [last] = cSendRaw last bs
 
-        sendExact d (c:cs) = let rAdr = remoteAddr c in
+        sendExact (c:cs) = let rAdr = remoteAddr c in
           -- Check for an exact match
           if adr == rAdr
           then cSendRaw c bs
@@ -201,21 +204,20 @@ route bs (Packet rh _) conn = do
           -- Otherwise, check to see if the direction is still the same
           else if d == dir rAdr adr
             -- Recurse if it is, last case is handled separately
-            then sendExact d cs
+            then sendExact cs
 
             -- DROP if it isn't, implying a left-out address.
             else sendDrop conn adr
 
+        -- Local name for the address from us to the target
+        d = dir myAddr adr
+
       in
-        unless isMe $ case dir myAddr adr of
-          CW  -> gets  cwConn >>= sendExact  CW
-          CCW -> gets ccwConn >>= sendExact CCW
+        unless isMe $ getsDir d >>= sendExact
 
     Approx -> do
       let Just (Base64 adr) = a
-      unless isMe $ case dir myAddr adr of
-        CW  -> head <$> gets  cwConn >>= (`cSendRaw` bs)
-        CCW -> head <$> gets ccwConn >>= (`cSendRaw` bs)
+      unless isMe $ head <$> getsDir (dir myAddr adr) >>= (`cSendRaw` bs)
 
 -- Helper functions
 

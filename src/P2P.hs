@@ -112,6 +112,10 @@ loadContext id = do
   Map.lookup id (keyTable state) `F.forM_` setContextKey
   Map.lookup id (locTable state) `F.forM_` setContextAddr
 
+getsDir :: Direction -> P2P [Connection]
+getsDir  CW = gets  cwConn
+getsDir CCW = gets ccwConn
+
 -- Wrapper functions for the Context
 
 getContextId :: P2P Id
