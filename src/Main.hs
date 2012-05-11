@@ -184,13 +184,32 @@ route bs (Packet rh _) conn = do
         conn <- head <$> gets cwConn
         cSendRaw conn bs
 
-    -- TODO: Implement routing mode Exact
+    Exact -> let
+        Just (Base64 adr) = a
 
-    Exact -> do
-      let Just (Base64 adr) = a
-      unless isMe $ case dir myAddr adr of
-        CW  -> return () -- Send to best CW connection
-        CCW -> return () -- Send to best CCW connection
+        sendExact :: Direction -> [Connection] -> P2P ()
+        sendExact d [] = throwError $
+          "Failed sending packet " ++ show d ++ ": no connections"
+
+        sendExact _ [last] = cSendRaw last bs
+
+        sendExact d (c:cs) = let rAdr = remoteAddr c in
+          -- Check for an exact match
+          if adr == rAdr
+          then cSendRaw c bs
+
+          -- Otherwise, check to see if the direction is still the same
+          else if d == dir rAdr adr
+            -- Recurse if it is, last case is handled separately
+            then sendExact d cs
+
+            -- DROP if it isn't, implying a left-out address.
+            else sendDrop conn adr
+
+      in
+        unless isMe $ case dir myAddr adr of
+          CW  -> gets  cwConn >>= sendExact  CW
+          CCW -> gets ccwConn >>= sendExact CCW
 
     Approx -> do
       let Just (Base64 adr) = a

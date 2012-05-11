@@ -31,6 +31,8 @@ hSendRaw h bs = do
   liftIO $ hPutChar h '\n'
   liftIO $ hFlush h
 
+-- Special send functions
+
 sendGlobal :: Content -> P2P ()
 sendGlobal cs = do
   base <- makeHeader
@@ -47,6 +49,15 @@ sendAddr a cs = do
   case dir home a of
     CW  -> (head <$> gets  cwConn) >>= send (Packet rh cs)
     CCW -> (head <$> gets ccwConn) >>= send (Packet rh cs)
+
+sendDrop :: Connection -> Address -> P2P ()
+sendDrop conn adr = do
+  base <- makeHeader
+  let rh = mkDrop adr : base
+
+  send (Packet rh []) conn
+
+-- Special context-dependent reply functions
 
 reply :: Content -> P2P ()
 reply cs = do
@@ -80,6 +91,8 @@ replyMirror cs = do
       let addrs = map remoteAddr conns
 
       mapM_ (`sendAddr` cs) addrs
+
+-- Helper function for generating header stubs
 
 makeHeader :: P2P [RSection]
 makeHeader = do
