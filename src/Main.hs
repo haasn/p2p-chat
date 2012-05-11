@@ -107,12 +107,15 @@ connect mvar port host = do
   forkIO $ runThread h host mvar `finally` withMVar mvar (close h host port)
   return ()
 
+disconnect :: Connection -> P2P ()
+disconnect = liftIO . hClose . socket
+
 runThread :: Handle -> HostName -> MVar P2PState -> IO ()
 runThread h host m = do
   eof <- hIsEOF h
   unless eof $ do
    packet <- hGetLine h
-   withMVar m (process h host packet)
+   withMVar m (process h host packet >> prune)
    runThread h host m
 
 process :: Handle -> HostName -> ByteString -> P2P ()
@@ -207,7 +210,7 @@ route bs (Packet rh _) conn = do
             then sendExact cs
 
             -- DROP if it isn't, implying a left-out address.
-            else sendDrop conn adr
+            else sendDrop adr conn
 
         -- Local name for the address from us to the target
         d = dir myAddr adr
@@ -218,6 +221,21 @@ route bs (Packet rh _) conn = do
     Approx -> do
       let Just (Base64 adr) = a
       unless isMe $ head <$> getsDir (dir myAddr adr) >>= (`cSendRaw` bs)
+
+-- Check the connection buffer sizes and prune or panic
+
+prune :: P2P ()
+prune = updateCW checkConns >> updateCCW checkConns
+ where
+  checkConns :: [Connection] -> P2P [Connection]
+  checkConns cs
+    | len >  5  = mapM_ disconnect rest >> return keep
+    | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
+    | len <  3  = sendPanic (head cs) >> return cs
+    | otherwise = return cs
+      where
+        len = length cs
+        (keep, rest) = splitAt 5 cs
 
 -- Helper functions
 

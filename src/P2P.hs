@@ -73,6 +73,16 @@ updateConn h id adr (x:xs)
   | socket x == h = x { remoteId = id, remoteAddr = adr } : xs
   | otherwise     = x : updateConn h id adr xs
 
+updateCW :: ([Connection] -> P2P [Connection]) -> P2P ()
+updateCW f = do
+  cs <- gets cwConn >>= f
+  modify $ \st -> st { cwConn = cs }
+
+updateCCW :: ([Connection] -> P2P [Connection]) -> P2P ()
+updateCCW f = do
+  cs <- gets ccwConn >>= f
+  modify $ \st -> st { ccwConn = cs }
+
 -- Context functions
 
 withContext :: (Context -> P2P a) -> P2P a

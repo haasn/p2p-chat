@@ -50,12 +50,16 @@ sendAddr a cs = do
     CW  -> (head <$> gets  cwConn) >>= send (Packet rh cs)
     CCW -> (head <$> gets ccwConn) >>= send (Packet rh cs)
 
-sendDrop :: Connection -> Address -> P2P ()
-sendDrop conn adr = do
+sendHeader :: RoutingHeader -> Connection -> P2P ()
+sendHeader rh conn = do
   base <- makeHeader
-  let rh = mkDrop adr : base
+  send (Packet (rh ++ base) []) conn
 
-  send (Packet rh []) conn
+sendDrop :: Address -> Connection -> P2P ()
+sendDrop adr = sendHeader [mkDrop adr]
+
+sendPanic :: Connection -> P2P ()
+sendPanic = sendHeader [Panic]
 
 -- Special context-dependent reply functions
 
