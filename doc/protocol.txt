@@ -26,9 +26,9 @@ IEEE754 doubles.
 
 IDs (public keys) will be encoded as followed:
 
-<2 bytes>  key size s
-<s bytes>  public n
-<rest>     public e
+<4 bytes>  key size s
+<4 bytes>  public e
+<rest>     public n
 
 All three fields are encoded as Integers (see above).
 

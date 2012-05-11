@@ -153,13 +153,12 @@ instance Serializable s => Serializable (Maybe s) where
 
 instance Serializable PublicKey where
   encode (PublicKey s n e) = return $
-    BS.concat [encIntegral s, encIntegral n, encIntegral e]
+    BS.concat [trim 4 $ encIntegral s, trim 4 $ encIntegral e, encIntegral n]
 
-  decode bs = PublicKey size (decIntegral n) (decIntegral e)
+  decode bs = PublicKey (decIntegral s) (decIntegral n) (decIntegral e)
     where
-      (s,rest) = BS.splitAt 2 bs
-      size     = decIntegral s
-      (n,e)    = BS.splitAt (fromIntegral size) rest
+      (s,rest) = BS.splitAt 4 bs
+      (e,n)    = BS.splitAt 4 rest
 
 -- Base64 and encryption logic
 

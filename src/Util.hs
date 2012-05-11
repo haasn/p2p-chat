@@ -22,6 +22,16 @@ fromLazy = BS.concat . LBS.toChunks
 wrapLazy :: (LBS.ByteString -> LBS.ByteString) -> ByteString -> ByteString
 wrapLazy f = fromLazy . f . toLazy
 
+-- Enforce a certain length for a ByteString
+
+trim :: Int -> ByteString -> ByteString
+trim n bs
+  | len > n   = BS.take n bs
+  | len < n   = BS.append bs $ BS.replicate (n - len) 0
+  | otherwise = bs
+ where
+  len = BS.length bs
+
 -- Helper functions
 
 fromRight :: Either String r -> r
