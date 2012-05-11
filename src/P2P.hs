@@ -106,6 +106,9 @@ setContextAddr a = modifyContext $ \ctx -> ctx { ctxAddr = Just a }
 setContextKey :: AESKey -> P2P ()
 setContextKey k = modifyContext $ \ctx -> ctx { ctxKey = Just k }
 
+setContextHandle :: (Handle, HostName) -> P2P ()
+setContextHandle h = modifyContext $ \ctx -> ctx { ctxHandle = Just h }
+
 setIsMe :: P2P ()
 setIsMe = modifyContext $ \ctx -> ctx { ctxIsMe = True }
 
@@ -125,8 +128,6 @@ loadContext id = do
 getsDir :: Direction -> P2P [Connection]
 getsDir  CW = gets  cwConn
 getsDir CCW = gets ccwConn
-
--- Wrapper functions for the Context
 
 getContextId :: P2P Id
 getContextId = do
@@ -148,6 +149,13 @@ getContextKey = do
   case key of
     Nothing -> throwError "No remote key in current context"
     Just k  -> return k
+
+getContextHandle :: P2P (Handle, HostName)
+getContextHandle = do
+  handle <- ctxHandle <$> gets context
+  case handle of
+    Nothing -> throwError "No remote handle in current context"
+    Just h  -> return h
 
 getLastField :: P2P ByteString
 getLastField = do

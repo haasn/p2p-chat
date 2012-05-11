@@ -155,6 +155,7 @@ data Context = Context
   , ctxAddr    :: Maybe Address
   , ctxKey     :: Maybe AESKey
   , lastField  :: Maybe ByteString
+  , ctxHandle  :: Maybe (Handle, HostName)
   , ctxIsMe    :: Bool
   }
  deriving (Eq, Show)
@@ -173,4 +174,4 @@ instance Ord PublicKey where
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing Nothing False
+nullContext = Context Nothing Nothing Nothing Nothing Nothing False

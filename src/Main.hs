@@ -11,7 +11,7 @@ import           Control.Concurrent.MVar hiding (withMVar)
 import           Control.Exception hiding (handle)
 import           Control.Monad.Error
 import           Control.Monad.State.Strict
-import           Control.Monad.Writer (runWriterT, tell)
+import           Control.Monad.Writer (runWriterT)
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
@@ -124,13 +124,13 @@ process :: Handle -> HostName -> ByteString -> P2P ()
 process h host bs = do
   let p@(Packet rh _) = decode bs
 
-  -- Parse right after decoding because sigs are verified here
+  resetContext
+  setContextHandle (h, host)
+
   parse p
 
   -- Check for no route packets
-  if any isNoRoute rh
-    then mapM_ (preroute h host) rh
-    else getConnection h >>= route bs p
+  unless (any isNoRoute rh) $ getConnection h >>= route bs p
  where
   getConnection :: Handle -> P2P Connection
   getConnection h = do
@@ -149,29 +149,7 @@ close h host port = do
   liftIO . putStrLn $ "[?] Disconnected from " ++ show host ++ ':': show port
   delConnection h
 
--- Evaluate a pre-Connection package
-
-preroute :: Handle -> HostName -> RSection -> P2P ()
-preroute h _ Identify = do
-  myId   <- gets pubKey
-  myAddr <- gets homeAddr
-  hSend h $ Packet [mkIAm myId myAddr] []
-
-preroute h _ Panic = do
-  known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
-  hSend h $ Packet (map mkPeer known) []
-
-preroute _ _ (Peer (Base64 host)) = do
-  known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
-  unless (host `elem` known) $ tell [host]
-
-preroute h host (IAm (Base64 id) (Base64 adr)) =
-  addConnection h host id adr
-
--- Ignore everything else
-preroute _ _ _ = return ()
-
--- Route a post-Connection package
+-- Route a packet
 
 route :: ByteString -> Packet -> Connection -> P2P ()
 route bs (Packet rh _) conn = do

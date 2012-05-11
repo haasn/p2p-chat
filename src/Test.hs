@@ -108,5 +108,5 @@ newState = do
     , privKey   = priv
     , homeAddr  = 0.1234
     , randomGen = newgen
-    , context   = Context (Just pub) (Just 0.12345) Nothing Nothing True
+    , context   = Context (Just pub) (Just 0.12345) Nothing Nothing Nothing True
     }

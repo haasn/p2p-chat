@@ -6,6 +6,7 @@ import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Writer (tell)
 
 import qualified Data.Map as Map
 
@@ -58,12 +59,26 @@ instance Parsable RSection where
     Drop (Base64 addr) ->
       forgetAddr addr
 
-    -- These are handled separately since they
-    -- aren't necessarily on a Connection
-    IAm{}    -> return ()
-    Identify -> return ()
-    Peer{}   -> return ()
-    Panic    -> return ()
+    -- No-route sections
+
+    Identify -> do
+      h      <- fst <$> getContextHandle
+      myId   <- gets pubKey
+      myAddr <- gets homeAddr
+      hSend h $ Packet [mkIAm myId myAddr] []
+
+    Panic -> do
+      h     <- fst <$> getContextHandle
+      known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
+      hSend h $ Packet (map mkPeer known) []
+
+    Peer (Base64 host) -> do
+      known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
+      unless (host `elem` known) $ tell [host]
+
+    IAm (Base64 id) (Base64 adr) -> do
+      (h, host) <- getContextHandle
+      addConnection h host id adr
 
     RUnknown bs ->
       throwError $ "Unknown RSection: " ++ show bs
@@ -158,8 +173,6 @@ instance Parsable Content where
 
 instance Parsable Packet where
   parse (Packet rh cs) = do
-    -- Make sure the context is always clean before parsing
-    resetContext
     parse rh
 
     if isValid rh
