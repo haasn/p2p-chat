@@ -69,7 +69,8 @@ main = withSocketsDo $ do
            in listenOn (PortNumber port)
 
   putStrLn $ "[?] p2p-chat v" ++ version ++ " loaded"
-  putStrLn   "[?] Legend: ? information, ~ warning, ! error, * exception"
+  putStrLn
+    "[?] Legend: ? information, ~ warning, ! error, * exception, $ shell"
 
   forkIO $ (`finally` sClose sock) . forever $ do
     (h, host, port) <- accept sock
