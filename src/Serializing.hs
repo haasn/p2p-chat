@@ -18,7 +18,6 @@ import qualified Data.ByteString.Base64 as B64 (encode, decode)
 
 import           Data.Char (toLower)
 import           Data.String (fromString)
-
 import           Data.Text (Text, unpack)
 import           Data.Text.Encoding
 
@@ -64,8 +63,8 @@ instance Serializable RSection where
 instance Serializable CSection where
   encode (Message t m _) = section "MESSAGE" [encode t, m', signLast]
     where m' = case t of
-            MGlobal -> encode $ Base64 m
-            _       -> encode $ Base64 (AES m)
+                 MGlobal -> encode $ Base64 m
+                 _       -> encode $ Base64 (AES m)
 
   encode (Key      p _) = section "KEY"      [encode p, signLast]
   encode (WhoIs      n) = section "WHOIS"    [encode n]

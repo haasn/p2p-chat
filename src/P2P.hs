@@ -40,7 +40,7 @@ addConnection h host id adr = do
 delConnection :: Handle -> P2P ()
 delConnection h =
   modify $ \st -> st { cwConn = del (cwConn st), ccwConn = del (ccwConn st) }
-   where del = filter (not . (== h) . socket)
+    where del = filter (not . (== h) . socket)
 
 findDirection :: Handle -> P2P (Maybe Direction)
 findDirection h = do
@@ -61,6 +61,7 @@ insertConnection c st =
   case dir (homeAddr st) (remoteAddr c) of
     CW  -> st { cwConn  = insert (cwConn  st) }
     CCW -> st { ccwConn = insert (ccwConn st) }
+
   where
     insert :: [Connection] -> [Connection]
     insert cs = let (l,g) = span (\p -> dista p < distb) cs in l ++ [c] ++ g

@@ -29,8 +29,8 @@ trim n bs
   | len > n   = BS.take n bs
   | len < n   = BS.append bs $ BS.replicate (n - len) 0
   | otherwise = bs
- where
-  len = BS.length bs
+  where
+    len = BS.length bs
 
 -- Helper functions
 

@@ -131,15 +131,16 @@ process h host bs = do
 
   -- Check for no route packets
   unless (any isNoRoute rh) $ getConnection h >>= route bs p
- where
-  getConnection :: Handle -> P2P Connection
-  getConnection h = do
-    conn <- findConnection h
-    case conn of
-      Nothing -> do
-        hSend h $ Packet [Identify] []
-        throwError "No Connection found, ignoring packet"
-      Just c  -> return c
+
+  where
+    getConnection :: Handle -> P2P Connection
+    getConnection h = do
+      conn <- findConnection h
+      case conn of
+        Nothing -> do
+          hSend h $ Packet [Identify] []
+          throwError "No Connection found, ignoring packet"
+        Just c  -> return c
 
 -- Close a handle
 
@@ -206,16 +207,16 @@ route bs (Packet rh _) conn = do
 
 prune :: P2P ()
 prune = updateCW checkConns >> updateCCW checkConns
- where
-  checkConns :: [Connection] -> P2P [Connection]
-  checkConns cs
-    | len >  5  = mapM_ disconnect rest >> return keep
-    | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
-    | len <  3  = sendPanic (head cs) >> return cs
-    | otherwise = return cs
-      where
-        len = length cs
-        (keep, rest) = splitAt 5 cs
+  where
+    checkConns :: [Connection] -> P2P [Connection]
+    checkConns cs
+      | len >  5  = mapM_ disconnect rest >> return keep
+      | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
+      | len <  3  = sendPanic (head cs) >> return cs
+      | otherwise = return cs
+        where
+          len = length cs
+          (keep, rest) = splitAt 5 cs
 
 -- Helper functions
 
