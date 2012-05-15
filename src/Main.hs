@@ -15,9 +15,8 @@ import           Control.Monad.Writer (runWriterT)
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
-import           Data.ByteString (ByteString, hGetLine)
+import           Data.ByteString (hGetLine)
 import           Data.Char (toLower)
-import           Data.List (find)
 import qualified Data.Map as Map
 
 import           GHC.IO.Handle hiding (hGetLine)
@@ -28,8 +27,8 @@ import           System.Environment (getArgs)
 import           System.Exit (ExitCode, exitSuccess)
 
 import           P2P
-import           P2P.Math
 import           P2P.Parsing()
+import           P2P.Processing
 import           P2P.Sending
 import           P2P.Serializing()
 import           P2P.Types
@@ -40,6 +39,8 @@ version = "0.0"
 
 defaultPort :: PortNumber
 defaultPort = 1027
+
+-- Initial state generation
 
 newState :: IO P2PState
 newState = do
@@ -57,6 +58,8 @@ newState = do
     , randomGen = newgen
     , context   = nullContext
     }
+
+-- Main action
 
 main :: IO ()
 main = withSocketsDo $ do
@@ -82,6 +85,8 @@ main = withSocketsDo $ do
     forkIO $ runThread h host mvar `finally` withMVar mvar (close h host port)
 
   handleInput mvar
+
+-- Console input handler
 
 handleInput :: MVar P2PState -> IO ()
 handleInput m = forever . handle $ do
@@ -109,9 +114,6 @@ connect mvar port host = do
   forkIO $ runThread h host mvar `finally` withMVar mvar (close h host port)
   return ()
 
-disconnect :: Connection -> P2P ()
-disconnect = liftIO . hClose . socket
-
 runThread :: Handle -> HostName -> MVar P2PState -> IO ()
 runThread h host m = do
   eof <- hIsEOF h
@@ -119,28 +121,6 @@ runThread h host m = do
    packet <- hGetLine h
    withMVar m (process h host packet >> prune)
    runThread h host m
-
-process :: Handle -> HostName -> ByteString -> P2P ()
-process h host bs = do
-  let p@(Packet rh _) = decode bs
-
-  resetContext
-  setContextHandle (h, host)
-
-  parse p
-
-  -- Check for no route packets
-  unless (any isNoRoute rh) $ getConnection h >>= route bs p
-
-  where
-    getConnection :: Handle -> P2P Connection
-    getConnection h = do
-      conn <- findConnection h
-      case conn of
-        Nothing -> do
-          hSend h $ Packet [Identify] []
-          throwError "No Connection found, ignoring packet"
-        Just c  -> return c
 
 -- Close a handle
 
@@ -150,75 +130,7 @@ close h host port = do
   liftIO . putStrLn $ "[?] Disconnected from " ++ show host ++ ':': show port
   delConnection h
 
--- Route a packet
-
-route :: ByteString -> Packet -> Connection -> P2P ()
-route bs (Packet rh _) conn = do
-  myId   <- gets pubKey
-  myAddr <- gets homeAddr
-  isMe <- getIsMe
-
-  let Just (Source (Base64 id) _) = find isSource rh
-  let Just (Target tt a) = find isTarget rh
-
-  case tt of
-    TGlobal ->
-      unless (id == myId) $ do
-        -- Send to next CW connection
-        conn <- head <$> gets cwConn
-        cSendRaw conn bs
-
-    Exact -> let
-        -- Local name for the address, pattern matched to remove type clutter
-        Just (Base64 adr) = a
-
-        -- The Exact mode routing function, defined here since it references
-        -- the local names adr and d
-        sendExact :: [Connection] -> P2P ()
-        sendExact [] = throwError $
-          "Failed sending packet " ++ show d ++ ": no connections"
-
-        sendExact [last] = cSendRaw last bs
-
-        sendExact (c:cs) = let rAdr = remoteAddr c in
-          -- Check for an exact match
-          if adr == rAdr
-          then cSendRaw c bs
-
-          -- Otherwise, check to see if the direction is still the same
-          else if d == dir rAdr adr
-            -- Recurse if it is, last case is handled separately
-            then sendExact cs
-
-            -- DROP if it isn't, implying a left-out address.
-            else sendDrop adr conn
-
-        -- Local name for the address from us to the target
-        d = dir myAddr adr
-
-      in
-        unless isMe $ getsDir d >>= sendExact
-
-    Approx -> do
-      let Just (Base64 adr) = a
-      unless isMe $ head <$> getsDir (dir myAddr adr) >>= (`cSendRaw` bs)
-
--- Check the connection buffer sizes and prune or panic
-
-prune :: P2P ()
-prune = updateCW checkConns >> updateCCW checkConns
-  where
-    checkConns :: [Connection] -> P2P [Connection]
-    checkConns cs
-      | len >  5  = mapM_ disconnect rest >> return keep
-      | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
-      | len <  3  = sendPanic (head cs) >> return cs
-      | otherwise = return cs
-        where
-          len = length cs
-          (keep, rest) = splitAt 5 cs
-
--- Helper functions
+-- Helper functions to synchronize threads using an MVar
 
 withMVar' :: MVar P2PState -> P2P () -> IO [HostName]
 withMVar' m a = modifyMVar m $ \st -> do
@@ -232,6 +144,8 @@ withMVar' m a = modifyMVar m $ \st -> do
 
 withMVar :: MVar P2PState -> P2P () -> IO ()
 withMVar m a = withMVar' m a >>= mapM_ (connect m defaultPort)
+
+-- Exception handler
 
 handle :: IO () -> IO ()
 handle a = a `catches`

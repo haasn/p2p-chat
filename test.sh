@@ -7,7 +7,6 @@ src/Types.hs
 src/P2P.hs
 src/Sending.hs
 src/Serializing.hs
-src/Parsing.hs
 "
 
 MAINFILE="Test"

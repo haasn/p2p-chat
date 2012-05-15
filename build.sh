@@ -8,6 +8,7 @@ src/P2P.hs
 src/Sending.hs
 src/Serializing.hs
 src/Parsing.hs
+src/Processing.hs
 "
 
 MAINFILE="Main"
