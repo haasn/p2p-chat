@@ -25,6 +25,7 @@ data P2PState = P2PState
   , idTable   :: Map Name Id
   , locTable  :: Map Id Address
   , keyTable  :: Map Id AESKey
+  , dhtQueue  :: Queue
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
   , homeAddr  :: Address
@@ -45,6 +46,7 @@ type Name       = String
 type Address    = Double
 type AESKey     = ByteString
 type Port       = PortNumber
+type Queue      = [Delayed]
 
 -- Connection type
 
@@ -119,6 +121,12 @@ type AES64 t = Base64 (AES t)
 
 data TargetType  = TGlobal | Exact | Approx deriving (Eq, Show, Read)
 data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
+
+-- Represents a delayed delivery packet, for when addresses are not known
+
+data Delayed
+  = NeedId Name (Id -> P2P ())
+  | NeedAddr Id (Address -> P2P ())
 
 -- Directional types for transfers
 

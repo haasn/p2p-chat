@@ -1,6 +1,7 @@
 module P2P.Sending where
 
 import           Control.Applicative
+import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
 
@@ -40,8 +41,8 @@ sendGlobal cs = do
 
   (head <$> gets cwConn) >>= send (Packet rh cs)
 
-sendAddr :: Address -> Content -> P2P ()
-sendAddr a cs = do
+sendAddr :: Content -> Address -> P2P ()
+sendAddr cs a = do
   base <- makeHeader
   home <- gets homeAddr
   let rh = mkTarget Exact (Just a) : base
@@ -64,14 +65,17 @@ sendPanic = sendHeader [Panic]
 -- Special context-dependent reply functions
 
 reply :: Content -> P2P ()
-reply cs = do
-  addr <- replyAddr
-  case addr of
-    Just a  -> sendAddr a cs
-    Nothing -> sendGlobal cs
+reply cs = replyAddr >>= sendAddr cs
 
-replyAddr :: P2P (Maybe Address)
+replyAddr :: P2P Address
 replyAddr = do
+  addr <- replyAddr'
+  case addr of
+    Nothing -> throwError "Trying to reply to unknown address"
+    Just a  -> return a
+
+replyAddr' :: P2P (Maybe Address)
+replyAddr' = do
   addr <- ctxAddr <$> gets context
   id   <- ctxId   <$> gets context
 
@@ -83,18 +87,14 @@ replyAddr = do
 
 replyMirror :: Content -> P2P ()
 replyMirror cs = do
-  addr <- replyAddr
-  case addr of
-    Nothing -> sendGlobal cs
-    Just a -> do
-      -- Send to the remote client first
-      sendAddr a cs
+  -- Send to the remote client first
+  reply cs
 
-      -- Send to all of my peers next for mirroring
-      conns <- (++) <$> gets cwConn <*> gets ccwConn
-      let addrs = map remoteAddr conns
+  -- Send to all of my peers next for mirroring
+  conns <- (++) <$> gets cwConn <*> gets ccwConn
+  let addrs = map remoteAddr conns
 
-      mapM_ (`sendAddr` cs) addrs
+  mapM_ (sendAddr cs) addrs
 
 -- Helper function for generating header stubs
 

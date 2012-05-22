@@ -17,6 +17,7 @@ import           Network (HostName)
 import           P2P
 import           P2P.Crypto
 import           P2P.Math
+import           P2P.Queue
 import           P2P.Sending
 import           P2P.Types
 import           P2P.Util
@@ -119,7 +120,7 @@ instance Parsable CSection where
         Just id -> reply [mkThisIs name id]
 
     ThisIs (Base64 name) (Base64 id) ->
-      insertId name id
+      insertId name id >> hasId name
 
     Register (Base64 name) s -> do
       parse s
@@ -131,6 +132,7 @@ instance Parsable CSection where
         Nothing -> do
           insertId name id
           replyMirror [mkThisIs name id]
+          hasId name
         Just _  -> reply [mkExist name]
 
     WhereIs (Base64 id) -> do
@@ -140,13 +142,14 @@ instance Parsable CSection where
         Just loc -> reply [mkHereIs id loc]
 
     HereIs (Base64 id) (Base64 addr) ->
-      insertAddr id addr
+      insertAddr id addr >> hasAddr id
 
     Update (Base64 addr) s -> do
       parse s
       id <- getContextId
       insertAddr id addr
       replyMirror [mkHereIs id addr]
+      hasAddr id
 
     -- Failure messages
 

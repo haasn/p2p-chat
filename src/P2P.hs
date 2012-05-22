@@ -183,6 +183,20 @@ insertKey :: Id -> AESKey -> P2P ()
 insertKey id key = modify $ \st ->
   st { keyTable = Map.insert id key (keyTable st) }
 
+getId :: Name -> P2P Id
+getId name = do
+  idt <- gets idTable
+  case Map.lookup name idt of
+    Nothing -> throwError $ "ID requested for '" ++ name ++ "' which has none."
+    Just id -> return id
+
+getAddr :: Id -> P2P Address
+getAddr id = do
+  adt <- gets locTable
+  case Map.lookup id adt of
+    Nothing -> throwError "Addr requested for nonexistant id."
+    Just ad -> return ad
+
 -- Packet processing functions
 
 isSource :: RSection -> Bool

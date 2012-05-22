@@ -104,6 +104,7 @@ newState = do
     , idTable   = Map.empty
     , locTable  = Map.empty
     , keyTable  = Map.empty
+    , dhtQueue  = []
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.1234

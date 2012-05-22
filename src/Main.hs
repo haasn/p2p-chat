@@ -30,6 +30,7 @@ import           System.Exit (ExitCode, exitSuccess)
 import           P2P
 import           P2P.Parsing()
 import           P2P.Processing
+import           P2P.Queue
 import           P2P.Sending
 import           P2P.Serializing()
 import           P2P.Types
@@ -60,6 +61,7 @@ newState = do
     , idTable   = Map.empty
     , locTable  = Map.empty
     , keyTable  = Map.empty
+    , dhtQueue  = []
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.5
@@ -118,6 +120,9 @@ handleInput m = forever . handle $ do
 
     "test.dump" -> runP2P m $
       get >>= throwError . show
+
+    "test.queue" -> runP2P m $
+      waitName "test" (sendAddr [mkMessage MGlobal "Foobar!"])
 
     _ -> putStrLn "[$] Unrecognized input"
 
