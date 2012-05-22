@@ -10,8 +10,9 @@ import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar hiding (withMVar)
 import           Control.Exception hiding (handle)
 import           Control.Monad.Error
+import           Control.Monad.Reader (ask)
+import           Control.Monad.RWS.Strict (execRWST)
 import           Control.Monad.State.Strict
-import           Control.Monad.Writer (runWriterT)
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
@@ -40,10 +41,17 @@ version = "0.0"
 defaultPort :: Port
 defaultPort = 1027
 
+-- Local meta-plumbing
+
+data Meta = Meta
+  { myMVar :: MVar P2PState
+  , myPort  :: Port
+  }
+
 -- Initial state generation
 
-newState :: Port -> IO P2PState
-newState port = do
+newState :: IO P2PState
+newState = do
   gen <- newGenIO :: IO SystemRandom
   let (pub, priv, newgen) = generateKeyPair gen 2048
   return P2PState
@@ -55,7 +63,6 @@ newState port = do
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.5
-    , homePort  = port
     , randomGen = newgen
     , context   = nullContext
     }
@@ -71,9 +78,10 @@ main = withSocketsDo $ do
     _   -> defaultPort
   }
 
-  -- Generate a new program state using this port as baselin
-  state <- newState port
+  -- Generate a new program state using this port as baseline
+  state <- newState
   mvar  <- newMVar state
+  let meta = Meta mvar port
 
   -- Open the listening socket
   sock  <- listenOn (PortNumber port)
@@ -91,13 +99,13 @@ main = withSocketsDo $ do
     -- Debugging purposes
     putStrLn $ "[?] Accepted connection from " ++ show host ++ ':': show port
 
-    forkIO $ runThread h host mvar `finally` withMVar mvar (close h host)
+    forkIO $ runThread h host meta `finally` runP2P meta (close h host)
 
-  handleInput mvar
+  handleInput meta
 
 -- Console input handler
 
-handleInput :: MVar P2PState -> IO ()
+handleInput :: Meta -> IO ()
 handleInput m = forever . handle $ do
   line <- map toLower <$> getLine
 
@@ -105,30 +113,30 @@ handleInput m = forever . handle $ do
     "quit" -> exitSuccess
     "test.connect" -> connect m "localhost" defaultPort
 
-    "test.global" -> withMVar m $
+    "test.global" -> runP2P m $
       sendGlobal [mkMessage MGlobal "Hello, world!"]
 
-    "test.dump" -> withMVar m $
+    "test.dump" -> runP2P m $
       get >>= throwError . show
 
     _ -> putStrLn "[$] Unrecognized input"
 
-connect :: MVar P2PState -> HostName -> Port -> IO ()
-connect mvar host port = do
+connect :: Meta -> HostName -> Port -> IO ()
+connect m host port = do
   h <- connectTo host (PortNumber port)
   putStrLn $ "[?] Connected to " ++ show host ++ ':': show port
-  withMVar mvar $ do
-    iam <- mkIAm <$> gets pubKey <*> gets homeAddr <*> gets homePort
+  runP2P m $ do
+    iam <- mkIAm <$> gets pubKey <*> gets homeAddr <*> ask
     hSend h $ Packet [Identify, iam] []
-  forkIO $ runThread h host mvar `finally` withMVar mvar (close h host)
+  forkIO $ runThread h host m `finally` runP2P m (close h host)
   return ()
 
-runThread :: Handle -> HostName -> MVar P2PState -> IO ()
+runThread :: Handle -> HostName -> Meta -> IO ()
 runThread h host m = do
   eof <- hIsEOF h
   unless eof $ do
    packet <- hGetLine h
-   withMVar m (process h host packet >> prune)
+   runP2P m (process h host packet >> prune)
    runThread h host m
 
 -- Close a handle
@@ -141,9 +149,9 @@ close h host = do
 
 -- Helper functions to synchronize threads using an MVar
 
-withMVar' :: MVar P2PState -> P2P () -> IO [(HostName, Port)]
-withMVar' m a = modifyMVar m $ \st -> do
-  res <- runErrorT (runWriterT $ execStateT a st)
+withMVar :: Meta -> P2P () -> IO [(HostName, Port)]
+withMVar m a = modifyMVar (myMVar m) $ \st -> do
+  res <- runErrorT (execRWST a (myPort m) st)
   case res of
     Left e  -> do
       putStrLn $ "[!] " ++ e
@@ -151,8 +159,8 @@ withMVar' m a = modifyMVar m $ \st -> do
 
     Right r -> return r
 
-withMVar :: MVar P2PState -> P2P () -> IO ()
-withMVar m a = withMVar' m a >>= mapM_ (uncurry $ connect m)
+runP2P :: Meta -> P2P () -> IO ()
+runP2P m a = withMVar m a >>= mapM_ (uncurry $ connect m)
 
 -- Exception handler
 

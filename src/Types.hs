@@ -1,8 +1,7 @@
 module P2P.Types where
 
 import           Control.Monad.Error (ErrorT)
-import           Control.Monad.State.Strict (StateT)
-import           Control.Monad.Writer (WriterT)
+import           Control.Monad.RWS.Strict (RWST)
 
 import           Crypto.Random (SystemRandom)
 import           Crypto.Types.PubKey.RSA (PublicKey(..), PrivateKey)
@@ -16,10 +15,7 @@ import           Network (HostName, PortNumber)
 
 -- Global monad
 
-type P2P = StateT P2PState
-          (WriterT [(HostName, Port)]
-          (ErrorT String
-           IO))
+type P2P = RWST Port [(HostName, Port)] P2PState (ErrorT String IO)
 
 -- Global state
 
@@ -32,7 +28,6 @@ data P2PState = P2PState
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
   , homeAddr  :: Address
-  , homePort  :: Port
   , randomGen :: SystemRandom
   , context   :: Context
   }
@@ -41,7 +36,7 @@ data P2PState = P2PState
 
 instance Show P2PState where
   show p = show (cwConn p, ccwConn p, idTable p, locTable p, keyTable p,
-                 pubKey p, privKey p, homeAddr p, homePort p, context p)
+                 pubKey p, privKey p, homeAddr p, context p)
 
 -- Friendly type synonyms
 

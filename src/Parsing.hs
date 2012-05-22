@@ -4,6 +4,7 @@ module P2P.Parsing where
 import           Control.Applicative
 import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
+import           Control.Monad.Reader (ask)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
@@ -66,7 +67,7 @@ instance Parsable RSection where
 
     Identify -> do
       h     <- fst <$> getContextHandle
-      iam   <- mkIAm <$> gets pubKey <*> gets homeAddr <*> gets homePort
+      iam   <- mkIAm <$> gets pubKey <*> gets homeAddr <*> ask
       known <- safePeers
 
       hSend h $ Packet (iam : map (uncurry mkPeer) known) []

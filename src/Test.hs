@@ -3,9 +3,9 @@ module Main where
 import           Codec.Crypto.RSA (generateKeyPair)
 
 import           Control.Monad.Error (runErrorT)
-import           Control.Monad.State.Strict (get, put, evalStateT)
+import           Control.Monad.RWS.Strict (evalRWST)
+import           Control.Monad.State.Strict (get, put)
 import           Control.Monad.Trans (liftIO)
-import           Control.Monad.Writer (runWriterT)
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
@@ -91,7 +91,7 @@ tests = do
 main :: IO ()
 main = do
   state <- newState
-  res   <- runErrorT (runWriterT $ evalStateT tests state)
+  res   <- runErrorT (evalRWST tests 1234 state)
   print res
 
 newState :: IO P2PState
@@ -107,7 +107,6 @@ newState = do
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.1234
-    , homePort  = 1234
     , randomGen = newgen
     , context   = Context (Just pub) (Just 0.12345) Nothing Nothing Nothing True
     }
