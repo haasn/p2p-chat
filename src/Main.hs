@@ -125,6 +125,10 @@ handleInput m = forever . handle $ do
     "test.queue" -> runP2P m $
       waitName "test" (sendAddr [mkMessage MGlobal "Foobar!"])
 
+    "test.register" -> runP2P m $ do
+      sendGlobal [mkRegister "nand"]
+      sendGlobal [mkWhoIs "nand"]
+
     _ -> putStrLn "[$] Unrecognized input"
 
 connect :: Meta -> HostName -> Port -> IO ()
