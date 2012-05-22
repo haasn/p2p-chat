@@ -60,8 +60,8 @@ mkSourceAddr addr = SourceAddr (Base64 addr) Signature
 mkVersion v = Version (Base64 v)
 mkSupport v = Support (Base64 v)
 mkDrop addr = Drop (Base64 addr)
-mkIAm id addr = IAm (Base64 id) (Base64 addr)
-mkPeer host = Peer (Base64 host)
+mkIAm id addr port = IAm (Base64 id) (Base64 addr) (Base64 port)
+mkPeer host port = Peer (Base64 host) (Base64 port)
 
 mkMessage mt msg = Message mt (pack msg) Signature
 mkKey k = Key (Base64 (RSA k)) Signature

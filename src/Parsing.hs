@@ -8,7 +8,10 @@ import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
 
+import           Data.List (delete)
 import qualified Data.Map as Map
+
+import           Network (HostName)
 
 import           P2P
 import           P2P.Crypto
@@ -62,26 +65,43 @@ instance Parsable RSection where
     -- No-route sections
 
     Identify -> do
-      h      <- fst <$> getContextHandle
-      myId   <- gets pubKey
-      myAddr <- gets homeAddr
-      hSend h $ Packet [mkIAm myId myAddr] []
+      h     <- fst <$> getContextHandle
+      iam   <- mkIAm <$> gets pubKey <*> gets homeAddr <*> gets homePort
+      known <- safePeers
+
+      hSend h $ Packet (iam : map (uncurry mkPeer) known) []
 
     Panic -> do
       h     <- fst <$> getContextHandle
-      known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
-      hSend h $ Packet (map mkPeer known) []
+      known <- safePeers
+      hSend h $ Packet (map (uncurry mkPeer) known) []
 
-    Peer (Base64 host) -> do
-      known <- map hostName .: (++) <$> gets cwConn <*> gets ccwConn
-      unless (host `elem` known) $ tell [host]
+    Peer (Base64 host) (Base64 port) -> do
+      known <- peers
+      unless ((host, port) `elem` known) $ tell [(host, port)]
 
-    IAm (Base64 id) (Base64 adr) -> do
+    IAm (Base64 id) (Base64 adr) (Base64 port) -> do
       (h, host) <- getContextHandle
-      addConnection h host id adr
+      addConnection h host port id adr
 
     RUnknown bs ->
       throwError $ "Unknown RSection: " ++ show bs
+
+    where
+      peers :: P2P [(HostName, Port)]
+      peers = do
+        conns <- (++) <$> gets cwConn <*> gets ccwConn
+        let hosts = map hostName conns
+        let ports = map hostPort conns
+        return $ zip hosts ports
+
+      -- Like peers but omits the peer's own address
+      safePeers :: P2P [(HostName, Port)]
+      safePeers = do
+        unsafe <- peers
+        conn   <- (fst <$> getContextHandle) >>= findConnection
+        return $
+          maybe unsafe (\c -> delete (hostName c, hostPort c) unsafe) conn
 
 instance Parsable CSection where
   parse csec = case csec of

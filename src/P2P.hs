@@ -29,11 +29,11 @@ withRandomGen f = do
 
 -- Connection functions
 
-addConnection :: Handle -> HostName -> Id -> Address -> P2P ()
-addConnection h host id adr = do
+addConnection :: Handle -> HostName -> Port -> Id -> Address -> P2P ()
+addConnection h host port id adr = do
   exist <- findDirection h
   case exist of
-    Nothing  -> modify (insertConnection  $ Connection h id adr host)
+    Nothing  -> modify (insertConnection  $ Connection h id adr host port)
     Just CW  -> modify (\s -> s { cwConn  = updateConn h id adr $ cwConn  s })
     Just CCW -> modify (\s -> s { ccwConn = updateConn h id adr $ ccwConn s })
 

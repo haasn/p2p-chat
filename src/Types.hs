@@ -12,12 +12,12 @@ import           Data.Map (Map)
 
 import           GHC.IO.Handle (Handle)
 
-import           Network (HostName)
+import           Network (HostName, PortNumber)
 
 -- Global monad
 
 type P2P = StateT P2PState
-          (WriterT [HostName]
+          (WriterT [(HostName, Port)]
           (ErrorT String
            IO))
 
@@ -32,20 +32,24 @@ data P2PState = P2PState
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
   , homeAddr  :: Address
+  , homePort  :: Port
   , randomGen :: SystemRandom
   , context   :: Context
   }
 
+-- Needed because SystemRandom doesn't have a show instance
+
 instance Show P2PState where
   show p = show (cwConn p, ccwConn p, idTable p, locTable p, keyTable p,
-                 pubKey p, privKey p, homeAddr p, context p)
+                 pubKey p, privKey p, homeAddr p, homePort p, context p)
 
--- Friendly types
+-- Friendly type synonyms
 
 type Id         = PublicKey
 type Name       = String
 type Address    = Double
 type AESKey     = ByteString
+type Port       = PortNumber
 
 -- Connection type
 
@@ -54,6 +58,7 @@ data Connection = Connection
   , remoteId   :: Id
   , remoteAddr :: Address
   , hostName   :: HostName
+  , hostPort   :: Port
   }
  deriving (Show)
 
@@ -67,8 +72,8 @@ type Content       = [CSection]
 -- Immediate data representation of all available sections,
 -- type and structure safe
 
-data RSection =
-    Target TargetType (Maybe (Base64 Address))
+data RSection
+  = Target TargetType (Maybe (Base64 Address))
   | Source (Base64 Id) Signature
   | SourceAddr (Base64 Address) Signature
   | Version (Base64 Integer)
@@ -77,17 +82,17 @@ data RSection =
 
   -- No-route sections
   | Identify
-  | IAm (Base64 Id) (Base64 Address)
-  | Peer (Base64 HostName)
+  | IAm (Base64 Id) (Base64 Address) (Base64 Port)
+  | Peer (Base64 HostName) (Base64 Port)
   | Panic
 
   -- For parsing failures
   | RUnknown ByteString
  deriving (Eq, Show)
 
-data CSection =
+data CSection
   -- This ByteString must be encoded separately
-    Message MessageType ByteString Signature
+  = Message MessageType ByteString Signature
 
   | Key (RSA64 AESKey) Signature
 

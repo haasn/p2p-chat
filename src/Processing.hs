@@ -103,7 +103,8 @@ prune = updateCW checkConns >> updateCCW checkConns
     checkConns cs
       | len >  5  = mapM_ disconnect rest >> return keep
       | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
-      | len <  3  = sendPanic (head cs) >> return cs
+      -- Commented out until special-cased
+      -- | len <  3  = sendPanic (head cs) >> return cs
       | otherwise = return cs
         where
           len = length cs

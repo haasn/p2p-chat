@@ -177,7 +177,7 @@ The routing header may contain the following sections:
 
   IAM section:
 
-  > IAM {ID} {ADDRESS}
+  > IAM {ID} {ADDRESS} {PORT}
 
   A special identification section. This section must never be routed to other
   peers, it is solely for identifying new peers after connectiong to them.
@@ -185,7 +185,7 @@ The routing header may contain the following sections:
 
   PEER section:
 
-  > PEER {HOSTNAME}
+  > PEER {HOSTNAME} {PORT}
 
   A special peer discovery section, used in case of connection loss and for
   the initial dial-in.

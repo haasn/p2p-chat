@@ -30,33 +30,33 @@ import           P2P.Util
 -- Section coding
 
 instance Serializable RSection where
-  encode (Target     t a) = section "TARGET"     [encode t, encode a]
-  encode (Source     i _) = section "SOURCE"     [encode i, signLast]
-  encode (SourceAddr a _) = section "SOURCEADDR" [encode a, signLast]
-  encode (Version    v  ) = section "VERSION"    [encode v]
-  encode (Support    v  ) = section "SUPPORT"    [encode v]
-  encode (Drop       a  ) = section "DROP"       [encode a]
-  encode (IAm        i a) = section "IAM"        [encode i, encode a]
-  encode (Identify      ) = section "IDENTIFY"   []
-  encode (Peer       h  ) = section "PEER"       [encode h]
-  encode (Panic         ) = section "PANIC"      []
+  encode (Target     t a  ) = section "TARGET"     [encode t, encode a]
+  encode (Source     i _  ) = section "SOURCE"     [encode i, signLast]
+  encode (SourceAddr a _  ) = section "SOURCEADDR" [encode a, signLast]
+  encode (Version    v    ) = section "VERSION"    [encode v]
+  encode (Support    v    ) = section "SUPPORT"    [encode v]
+  encode (Drop       a    ) = section "DROP"       [encode a]
+  encode (IAm        i a p) = section "IAM"        [encode i, encode a, encode p]
+  encode (Identify        ) = section "IDENTIFY"   []
+  encode (Peer       h p  ) = section "PEER"       [encode h, encode p]
+  encode (Panic           ) = section "PANIC"      []
 
-  encode (RUnknown   _  ) = throwError "Trying to encode RUnknown"
+  encode (RUnknown   _    ) = throwError "Trying to encode RUnknown"
 
   decode bs = case parseSection (splitSection bs) of
     ("target", tt:l) -> case decode tt of
         TGlobal -> Target TGlobal Nothing
         t       -> Target t (decode $ head l)
 
-    ("source"    , [i,s]) -> Source (decode i) (Verify i s)
-    ("sourceaddr", [a,s]) -> SourceAddr (decode a) (Verify a s)
-    ("version"   , [v  ]) -> Version (decode v)
-    ("support"   , [v  ]) -> Support (decode v)
-    ("drop"      , [a  ]) -> Drop (decode a)
-    ("iam"       , [i,a]) -> IAm (decode i) (decode a)
-    ("identify"  , [   ]) -> Identify
-    ("peer"      , [h  ]) -> Peer (decode h)
-    ("panic"     , [   ]) -> Panic
+    ("source"    , [i,s  ]) -> Source (decode i) (Verify i s)
+    ("sourceaddr", [a,s  ]) -> SourceAddr (decode a) (Verify a s)
+    ("version"   , [v    ]) -> Version (decode v)
+    ("support"   , [v    ]) -> Support (decode v)
+    ("drop"      , [a    ]) -> Drop (decode a)
+    ("iam"       , [i,a,p]) -> IAm (decode i) (decode a) (decode p)
+    ("identify"  , [     ]) -> Identify
+    ("peer"      , [h,p  ]) -> Peer (decode h) (decode p)
+    ("panic"     , [     ]) -> Panic
 
     _ -> RUnknown bs
 
@@ -115,6 +115,10 @@ instance Serializable Integer where
 instance Serializable Double where
   encode = return . encDouble
   decode = decDouble
+
+instance Serializable Port where
+  encode = encode . (fromIntegral :: Port -> Integer)
+  decode = (fromIntegral :: Integer -> Port) . decode
 
 instance Serializable TargetType where
   encode TGlobal = encode "GLOBAL"

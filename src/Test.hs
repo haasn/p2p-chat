@@ -67,7 +67,7 @@ tests = do
     , roundCheck $ Support (Base64 2)
     , roundCheck $ Drop (Base64 0.12345)
     , roundCheck Identify
-    , roundCheck $ IAm (Base64 pub) (Base64 0.12345)
+    , roundCheck $ IAm (Base64 pub) (Base64 0.12345) (Base64 1234)
 
     -- Content tests
 
@@ -107,6 +107,7 @@ newState = do
     , pubKey    = pub
     , privKey   = priv
     , homeAddr  = 0.1234
+    , homePort  = 1234
     , randomGen = newgen
     , context   = Context (Just pub) (Just 0.12345) Nothing Nothing Nothing True
     }
