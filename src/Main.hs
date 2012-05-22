@@ -28,6 +28,7 @@ import           System.Environment (getArgs)
 import           System.Exit (ExitCode, exitSuccess)
 
 import           P2P
+import           P2P.Math
 import           P2P.Parsing()
 import           P2P.Processing
 import           P2P.Queue
@@ -175,3 +176,47 @@ handle a = a `catches`
   , Handler $ \(e :: AsyncException) -> throwIO e
   , Handler $ \(e :: SomeException)  -> putStrLn ("[*] " ++ show e)
   ]
+
+-- Pretty outputting of program states, needed for ‘test.dump’
+
+instance Show P2PState where
+  show p = "P2PState:\n" ++
+    "cwConn:\n" ++
+    concatMap (showLine . showC) (cwConn p) ++
+
+    "ccwConn:\n" ++
+    concatMap (showLine . showC) (ccwConn p) ++
+
+    "idTable:\n" ++
+    concatMap (showLine . showIT) (Map.assocs $ idTable p) ++
+
+    "locTable:\n" ++
+    concatMap (showLine . showLT) (Map.assocs $ locTable p) ++
+
+    "keyTable:\n" ++
+    concatMap (showLine . showKT) (Map.assocs $ keyTable p) ++
+
+    "pubKey: " ++ showId (pubKey p) ++ "\n" ++
+
+    "homeAddr: " ++ show (homeAddr p) ++ "\n"
+
+    where
+      showLine :: String -> String
+      showLine s = " - " ++ s ++ "\n"
+
+      showC :: Connection -> String
+      showC c =
+        showId (remoteId c) ++ " @ " ++ show (remoteAddr c) ++
+        " (" ++ hostName c ++ ":" ++ show (hostPort c) ++ ")"
+
+      showIT :: (Name, Id) -> String
+      showIT (name, id) = name ++ " -> " ++ showId id
+
+      showLT :: (Id, Address) -> String
+      showLT (id, adr) = showId id ++ " -> " ++ show adr
+
+      showKT :: (Id, AESKey) -> String
+      showKT (id, key) = showId id ++ " -> " ++ show key
+
+      showId :: Id -> String
+      showId id = '#' : show (hashId id)

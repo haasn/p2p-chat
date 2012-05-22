@@ -33,12 +33,6 @@ data P2PState = P2PState
   , context   :: Context
   }
 
--- Needed because SystemRandom doesn't have a show instance
-
-instance Show P2PState where
-  show p = show (cwConn p, ccwConn p, idTable p, locTable p, keyTable p,
-                 pubKey p, privKey p, homeAddr p, context p)
-
 -- Friendly type synonyms
 
 type Id         = PublicKey
