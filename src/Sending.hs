@@ -100,6 +100,9 @@ sendWhereIs id = sendApprox [mkWhereIs id] (hashId id)
 sendRequest :: Connection -> P2P ()
 sendRequest c = return () -- sendExact [Request] (remoteAddr c)
 
+sendRegister :: Name -> P2P ()
+sendRegister name = sendApprox [mkRegister name] (hashName name)
+
 -- Special context-dependent reply functions
 
 reply' :: RoutingHeader -> Content -> P2P ()

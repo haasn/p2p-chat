@@ -132,9 +132,8 @@ handleInput m = forever . handle $ do
     "test.queue" -> runP2P m $
       withName "test" (sendExact [mkMessage MGlobal "Foobar!"])
 
-    "test.register" -> runP2P m $ do
-      sendGlobal [mkRegister "nand"]
-      sendGlobal [mkWhoIs "nand"]
+    "test.register" -> runP2P m $
+      sendRegister "nand"
 
     _ -> putStrLn "[$] Unrecognized input"
 

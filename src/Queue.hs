@@ -1,7 +1,6 @@
 module P2P.Queue where
 
 import           Control.Monad.State (get, put)
-import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
 
 import           Data.List (partition)
