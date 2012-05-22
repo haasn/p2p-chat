@@ -1,12 +1,11 @@
 module P2P.Types where
 
-import           Codec.Crypto.RSA (PublicKey(..), PrivateKey)
-
 import           Control.Monad.Error (ErrorT)
 import           Control.Monad.State.Strict (StateT)
 import           Control.Monad.Writer (WriterT)
 
 import           Crypto.Random (SystemRandom)
+import           Crypto.Types.PubKey.RSA (PublicKey(..), PrivateKey)
 
 import           Data.ByteString (ByteString)
 import           Data.Map (Map)
@@ -160,12 +159,7 @@ data Context = Context
   }
  deriving (Eq, Show)
 
--- Needed to derive Eq on PublicKey
-
-instance Eq PublicKey where
-  a == b = case a `compare` b of
-    EQ -> True
-    _  -> False
+-- Needed for using publickeys as map keys
 
 instance Ord PublicKey where
   compare (PublicKey a b c) (PublicKey a' b' c') =

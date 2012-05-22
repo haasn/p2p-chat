@@ -2,12 +2,12 @@
 
 module P2P.Serializing where
 
-import           Codec.Crypto.RSA (PublicKey(..))
-
 import           Control.Applicative
 import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
+
+import           Crypto.Types.PubKey.RSA (PublicKey(..))
 
 import           Data.Binary.IEEE754
 import           Data.Binary.Put (runPut)

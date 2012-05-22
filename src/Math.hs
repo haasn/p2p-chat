@@ -1,11 +1,11 @@
 module P2P.Math where
 
+import Crypto.Types.PubKey.RSA (PublicKey, public_n)
+
 import Data.Bits (xor)
 import Data.Char (ord)
 import Data.List (unfoldr, foldl')
 import Data.Tuple (swap)
-
-import Codec.Crypto.RSA (PublicKey, public_n)
 
 import P2P.Types
 

@@ -9,6 +9,7 @@ import qualified Codec.Digest.SHA as SHA
 import           Control.Monad.Error (throwError)
 
 import           Crypto.Random (CryptoRandomGen, genBytes)
+import           Crypto.Types.PubKey.RSA
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
