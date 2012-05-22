@@ -102,8 +102,8 @@ prune = updateCW checkConns >> updateCCW checkConns
     checkConns :: [Connection] -> P2P [Connection]
     checkConns cs
       | len >  5  = mapM_ disconnect rest >> return keep
-      | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
       -- Commented out until special-cased
+      -- | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
       -- | len <  3  = sendPanic (head cs) >> return cs
       | otherwise = return cs
         where
