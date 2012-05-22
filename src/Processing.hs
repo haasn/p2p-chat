@@ -28,6 +28,8 @@ process h host bs = do
 
   let p@(Packet rh _) = decode bs
 
+  liftIO . putStrLn $ "[?] " ++ show p
+
   resetContext
   setContextHandle (h, host)
 
