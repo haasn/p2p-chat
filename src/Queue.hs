@@ -5,8 +5,8 @@ import           Control.Monad.State.Strict (get, put)
 import           Data.List (partition)
 
 import           P2P
+import           P2P.Sending
 import           P2P.Types
-import           P2P.Util
 
 -- Functions to modify the queue
 
@@ -24,7 +24,7 @@ enqueue d = modifyQueue $ return . (d:)
 hasId :: Name -> P2P ()
 hasId name = modifyQueue $ \queue -> do
   let (match, rest) = partition f queue
-  id <- getId name
+  id <- getId' name
 
   mapM_ (\(NeedId _ f) -> f id) $ reverse match
   return rest
@@ -36,7 +36,7 @@ hasId name = modifyQueue $ \queue -> do
 hasAddr :: Id -> P2P ()
 hasAddr id = modifyQueue $ \queue -> do
   let (match, rest) = partition f queue
-  addr <- getAddr id
+  addr <- getAddr' id
 
   mapM_ (\(NeedAddr _ f) -> f addr) $ reverse match
   return rest
@@ -45,10 +45,22 @@ hasAddr id = modifyQueue $ \queue -> do
     f (NeedId   _ _) = False
     f (NeedAddr i _) = i == id
 
--- Functions to delay processing
+-- Functions to perform DHT lookups and/or delay processing
 
-waitId :: Id -> (Address -> P2P ()) -> P2P ()
-waitId = enqueue .: NeedAddr
+withId :: Id -> (Address -> P2P ()) -> P2P ()
+withId id f = do
+  adr <- getAddr id
+  case adr of
+    Just a  -> f a
+    Nothing -> do
+      enqueue $ NeedAddr id f
+      sendWhereIs id
 
-waitName :: Name -> (Address -> P2P ()) -> P2P ()
-waitName name f = enqueue $ NeedId name (`waitId` f)
+withName :: Name -> (Address -> P2P ()) -> P2P ()
+withName name f = do
+  id <- getId name
+  case id of
+    Just i  -> withId i f
+    Nothing -> do
+      enqueue $ NeedId name (`withId` f)
+      sendWhoIs name

@@ -1,7 +1,6 @@
 module P2P.Sending where
 
 import           Control.Applicative
-import           Control.Monad.Error (throwError)
 import           Control.Monad.State.Strict (gets)
 import           Control.Monad.Trans (liftIO)
 
@@ -15,7 +14,7 @@ import           P2P.Serializing()
 import           P2P.Types
 import           P2P.Util
 
--- Send a packet
+-- Send a packet directly
 
 send :: Packet -> Connection -> P2P ()
 send packet conn = encode packet >>= cSendRaw conn
@@ -41,38 +40,46 @@ sendGlobal cs = do
 
   (head <$> gets cwConn) >>= send (Packet rh cs)
 
-sendAddr :: Content -> Address -> P2P ()
-sendAddr cs a = do
+sendAddr :: TargetType -> RoutingHeader -> Content -> Address -> P2P ()
+sendAddr tt rh cs a = do
   base <- makeHeader
   home <- gets homeAddr
-  let rh = mkTarget Exact (Just a) : base
+  let rh' = mkTarget tt (Just a) : rh ++ base
 
   case dir home a of
-    CW  -> (head <$> gets  cwConn) >>= send (Packet rh cs)
-    CCW -> (head <$> gets ccwConn) >>= send (Packet rh cs)
+    CW  -> (head <$> gets  cwConn) >>= send (Packet rh' cs)
+    CCW -> (head <$> gets ccwConn) >>= send (Packet rh' cs)
+
+sendExact :: Content -> Address -> P2P ()
+sendExact = sendAddr Exact []
+
+sendApprox :: Content -> Address -> P2P ()
+sendApprox = sendAddr Approx []
 
 sendHeader :: RoutingHeader -> Connection -> P2P ()
 sendHeader rh conn = do
   base <- makeHeader
   send (Packet (rh ++ base) []) conn
 
-sendDrop :: Address -> Connection -> P2P ()
-sendDrop adr = sendHeader [mkDrop adr]
+sendDrop :: Address -> Address -> P2P ()
+sendDrop adr = sendAddr Exact [mkDrop adr] []
 
 sendPanic :: Connection -> P2P ()
 sendPanic = sendHeader [Panic]
 
+sendWhoIs :: Name -> P2P ()
+sendWhoIs name = sendApprox [mkWhoIs name] (hashName name)
+
+sendWhereIs :: Id -> P2P ()
+sendWhereIs id = sendApprox [mkWhereIs id] (hashId id)
+
 -- Special context-dependent reply functions
 
 reply :: Content -> P2P ()
-reply cs = replyAddr >>= sendAddr cs
+reply cs = replyAddr >>= sendExact cs
 
 replyAddr :: P2P Address
-replyAddr = do
-  addr <- replyAddr'
-  case addr of
-    Nothing -> throwError "Trying to reply to unknown address"
-    Just a  -> return a
+replyAddr = wrapError replyAddr' "Trying to reply to unknown address"
 
 replyAddr' :: P2P (Maybe Address)
 replyAddr' = do
@@ -94,7 +101,7 @@ replyMirror cs = do
   conns <- (++) <$> gets cwConn <*> gets ccwConn
   let addrs = map remoteAddr conns
 
-  mapM_ (sendAddr cs) addrs
+  mapM_ (sendExact cs) addrs
 
 -- Helper function for generating header stubs
 

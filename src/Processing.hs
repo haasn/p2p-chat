@@ -14,6 +14,7 @@ import           Network
 import           P2P
 import           P2P.Math
 import           P2P.Parsing()
+import           P2P.Queue
 import           P2P.Sending
 import           P2P.Types
 
@@ -84,7 +85,7 @@ route bs (Packet rh _) conn = do
             then sendExact cs
 
             -- DROP if it isn't, implying a left-out address.
-            else sendDrop adr conn
+            else withId id (sendDrop adr)
 
         -- Local name for the address from us to the target
         d = dir myAddr adr

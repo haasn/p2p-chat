@@ -17,6 +17,7 @@ import           Network (HostName)
 
 import           P2P.Math
 import           P2P.Types
+import           P2P.Util
 
 -- Wrapper functions for the global state
 
@@ -183,19 +184,18 @@ insertKey :: Id -> AESKey -> P2P ()
 insertKey id key = modify $ \st ->
   st { keyTable = Map.insert id key (keyTable st) }
 
-getId :: Name -> P2P Id
-getId name = do
-  idt <- gets idTable
-  case Map.lookup name idt of
-    Nothing -> throwError $ "ID requested for '" ++ name ++ "' which has none."
-    Just id -> return id
+getId :: Name -> P2P (Maybe Id)
+getId name = Map.lookup name <$> gets idTable
 
-getAddr :: Id -> P2P Address
-getAddr id = do
-  adt <- gets locTable
-  case Map.lookup id adt of
-    Nothing -> throwError "Addr requested for nonexistant id."
-    Just ad -> return ad
+getAddr :: Id -> P2P (Maybe Address)
+getAddr id = Map.lookup id <$> gets locTable
+
+getId' :: Name -> P2P Id
+getId' name = wrapError (getId name) $
+  "ID requested for '" ++ name ++ "' which has none."
+
+getAddr' :: Id -> P2P Address
+getAddr' id = wrapError (getAddr id) "Addr requested for nonexistant id."
 
 -- Packet processing functions
 
