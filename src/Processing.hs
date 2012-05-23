@@ -32,22 +32,12 @@ process h host bs = do
   parse p
 
   -- Check for no route packets
-  unless (any isNoRoute rh) $ getConnection h >>= route bs p
-
-  where
-    getConnection :: Handle -> P2P Connection
-    getConnection h = do
-      conn <- findConnection h
-      case conn of
-        Nothing -> do
-          hSend h $ Packet [Identify] []
-          throwError "No Connection found, ignoring packet"
-        Just c  -> return c
+  unless (any isNoRoute rh) $ route bs p
 
 -- Route a packet
 
-route :: ByteString -> Packet -> Connection -> P2P ()
-route bs (Packet rh _) conn = do
+route :: ByteString -> Packet -> P2P ()
+route bs (Packet rh _) = do
   myId   <- gets pubKey
   myAddr <- gets homeAddr
   isMe <- getIsMe

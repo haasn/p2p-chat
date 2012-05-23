@@ -152,14 +152,14 @@ instance Parsable CSection where
 
     -- Failure messages
 
-    NoExist (Base64 name) -> liftIO . putStrLn $
-      "[~] A DHT lookup for “" ++ name ++ "” failed with NOEXIST"
+    NoExist (Base64 name) -> noId name >> liftIO (putStrLn $
+      "[~] A DHT lookup for “" ++ name ++ "” failed with NOEXIST")
 
-    NotFound (Base64 adr) -> liftIO . putStrLn $
-      "[~] A DHT lookup for address “" ++ show adr ++ "” failed with NOTFOUND"
+    NotFound (Base64 id) -> noAddr id >> liftIO (putStrLn $
+      "[~] A DHT lookup for id “" ++ show id ++ "” failed with NOTFOUND")
 
-    Exist (Base64 name) -> liftIO . putStrLn $
-      "[~] Registration for “" ++ name ++ "” failed: Entry already exists"
+    Exist (Base64 name) -> liftIO (putStrLn $
+      "[~] Registration for “" ++ name ++ "” failed: Entry already exists")
 
     Message t m s -> do
       parse s
