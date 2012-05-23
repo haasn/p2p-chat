@@ -45,6 +45,21 @@ hasAddr id = modifyQueue $ \queue -> do
     f (NeedId   _ _) = False
     f (NeedAddr i _) = i == id
 
+-- Functions to delete delayed actions from the queue for which no appropriate
+-- information could be found, eg. due to a NOEXIST or NOTFOUND.
+
+noId :: Name -> P2P ()
+noId name = modifyQueue $ return . filter f
+  where
+    f (NeedAddr _ _) = True
+    f (NeedId   n _) = n /= name
+
+noAddr :: Id -> P2P ()
+noAddr id = modifyQueue $ return . filter f
+  where
+    f (NeedId   _ _) = True
+    f (NeedAddr i _) = i /= id
+
 -- Functions to perform DHT lookups and/or delay processing
 
 withId :: Id -> (Address -> P2P ()) -> P2P ()
