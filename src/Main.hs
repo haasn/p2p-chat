@@ -123,7 +123,7 @@ handleInput m = forever . handle $ do
       get >>= throwError . show
 
     "test.queue" -> runP2P m $
-      waitName "test" (sendAddr [mkMessage MGlobal "Foobar!"])
+      withName "test" (sendExact [mkMessage MGlobal "Foobar!"])
 
     _ -> putStrLn "[$] Unrecognized input"
 

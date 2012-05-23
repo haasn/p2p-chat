@@ -1,5 +1,7 @@
 module P2P.Util where
 
+import           Control.Monad.Error (throwError)
+
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -41,6 +43,9 @@ fromRight (Right r) = r
 fromRight' :: Show s => Either s r -> r
 fromRight' (Left s)  = error $ show s
 fromRight' (Right r) = r
+
+wrapError :: P2P (Maybe a) -> String -> P2P a
+wrapError act err = act >>= maybe (throwError err) return
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

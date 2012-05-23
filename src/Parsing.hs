@@ -10,7 +10,6 @@ import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
 
 import           Data.List (delete)
-import qualified Data.Map as Map
 
 import           Network (HostName)
 
@@ -114,8 +113,8 @@ instance Parsable CSection where
       insertKey id key
 
     WhoIs (Base64 name) -> do
-      idt <- gets idTable
-      case Map.lookup name idt of
+      id <- getId name
+      case id of
         Nothing -> reply [mkNoExist name]
         Just id -> reply [mkThisIs name id]
 
@@ -127,8 +126,8 @@ instance Parsable CSection where
       id <- getContextId
 
       -- See if name exists
-      idt <- gets idTable
-      case Map.lookup name idt of
+      id' <- getId name
+      case id' of
         Nothing -> do
           insertId name id
           replyMirror [mkThisIs name id]
@@ -136,8 +135,8 @@ instance Parsable CSection where
         Just _  -> reply [mkExist name]
 
     WhereIs (Base64 id) -> do
-      loct <- gets locTable
-      case Map.lookup id loct of
+      adr <- getAddr id
+      case adr of
         Nothing  -> reply [mkNotFound id]
         Just loc -> reply [mkHereIs id loc]
 
