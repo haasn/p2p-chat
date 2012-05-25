@@ -140,11 +140,14 @@ connect m host port = do
 
 runThread :: Handle -> HostName -> Meta -> IO ()
 runThread h host m = handle $ do
-  eof <- hIsEOF h
-  unless eof $ do
-   packet <- hGetLine h
-   runP2P m (process h host packet >> prune)
-   runThread h host m
+  -- Get all input lazily, split by lines
+  ls <- lines <$> hGetContents h
+  mapM_ (runP2P m . go) ls
+
+  where
+    -- Pack a packet into a strict bytestring for reprocessing
+    go :: String -> P2P ()
+    go packet = process h host (pack packet) >> prune
 
 -- Close a handle
 
