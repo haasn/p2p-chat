@@ -114,7 +114,8 @@ handleInput m = forever . handle $ do
   line <- map toLower <$> getLine
 
   case line of
-    "quit" -> exitSuccess
+    "quit" -> runP2P m (sendGlobal' [Quit] []) >> exitSuccess
+
     "test.connect" -> connect m "localhost" defaultPort
 
     "test.global" -> runP2P m $
