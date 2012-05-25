@@ -184,6 +184,10 @@ insertKey :: Id -> AESKey -> P2P ()
 insertKey id key = modify $ \st ->
   st { keyTable = Map.insert id key (keyTable st) }
 
+forgetKey :: Id -> P2P ()
+forgetKey id = modify $ \st ->
+  st { keyTable = Map.delete id (keyTable st) }
+
 getId :: Name -> P2P (Maybe Id)
 getId name = Map.lookup name <$> gets idTable
 

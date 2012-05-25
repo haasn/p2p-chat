@@ -40,6 +40,7 @@ instance Serializable RSection where
   encode (Identify        ) = section "IDENTIFY"   []
   encode (Peer       h p  ) = section "PEER"       [encode h, encode p]
   encode (Panic           ) = section "PANIC"      []
+  encode (Quit            ) = section "QUIT"       []
 
   encode (RUnknown   _    ) = throwError "Trying to encode RUnknown"
 
@@ -57,6 +58,7 @@ instance Serializable RSection where
     ("identify"  , [     ]) -> Identify
     ("peer"      , [h,p  ]) -> Peer (decode h) (decode p)
     ("panic"     , [     ]) -> Panic
+    ("quit"      , [     ]) -> Quit
 
     _ -> RUnknown bs
 

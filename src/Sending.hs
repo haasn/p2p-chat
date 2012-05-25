@@ -16,29 +16,36 @@ import           P2P.Util
 
 -- Send a packet directly
 
-send :: Packet -> Connection -> P2P ()
-send packet conn = encode packet >>= cSendRaw conn
-
-hSend :: Handle -> Packet -> P2P ()
-hSend h packet = encode packet >>= hSendRaw h
-
-cSendRaw :: Connection -> ByteString -> P2P ()
-cSendRaw = hSendRaw . socket
-
 hSendRaw :: Handle -> ByteString -> P2P ()
 hSendRaw h bs = do
   liftIO $ hPut h bs
   liftIO $ hPutChar h '\n'
   liftIO $ hFlush h
 
--- Special send functions
+hSend :: Handle -> Packet -> P2P ()
+hSend h packet = encode packet >>= hSendRaw h
 
-sendGlobal :: Content -> P2P ()
-sendGlobal cs = do
+-- Functions for interacting directly with Connections
+
+send :: Packet -> Connection -> P2P ()
+send packet conn = encode packet >>= cSendRaw conn
+
+cSendRaw :: Connection -> ByteString -> P2P ()
+cSendRaw = hSendRaw . socket
+
+sendHeader :: RoutingHeader -> Connection -> P2P ()
+sendHeader rh conn = do
   base <- makeHeader
-  let rh = mkTarget TGlobal Nothing : base
+  send (Packet (rh ++ base) []) conn
 
-  (head <$> gets cwConn) >>= send (Packet rh cs)
+-- Basic packet sending functions
+
+sendGlobal' :: RoutingHeader -> Content -> P2P ()
+sendGlobal' rh cs = do
+  base <- makeHeader
+  let rh' = mkTarget TGlobal Nothing : rh ++ base
+
+  (head <$> gets cwConn) >>= send (Packet rh' cs)
 
 sendAddr :: TargetType -> RoutingHeader -> Content -> Address -> P2P ()
 sendAddr tt rh cs a = do
@@ -50,16 +57,19 @@ sendAddr tt rh cs a = do
     CW  -> (head <$> gets  cwConn) >>= send (Packet rh' cs)
     CCW -> (head <$> gets ccwConn) >>= send (Packet rh' cs)
 
+-- Less general alternatives for convenience
+
+sendGlobal :: Content -> P2P ()
+sendGlobal = sendGlobal' []
+
 sendExact :: Content -> Address -> P2P ()
 sendExact = sendAddr Exact []
 
 sendApprox :: Content -> Address -> P2P ()
 sendApprox = sendAddr Approx []
 
-sendHeader :: RoutingHeader -> Connection -> P2P ()
-sendHeader rh conn = do
-  base <- makeHeader
-  send (Packet (rh ++ base) []) conn
+
+-- Higher order packet sending functions
 
 sendDrop :: Address -> Address -> P2P ()
 sendDrop adr = sendAddr Exact [mkDrop adr] []

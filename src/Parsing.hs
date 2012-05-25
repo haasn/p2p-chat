@@ -10,6 +10,7 @@ import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
 
 import           Data.List (delete)
+import           Data.Maybe (isJust, fromJust)
 
 import           Network (HostName)
 
@@ -62,6 +63,12 @@ instance Parsable RSection where
 
     Drop (Base64 addr) ->
       forgetAddr addr
+
+    Quit -> do
+      addr <- ctxAddr <$> gets context
+      when (isJust addr) $ forgetAddr (fromJust addr)
+
+      getContextId >>= forgetKey
 
     -- No-route sections
 
