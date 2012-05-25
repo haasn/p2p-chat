@@ -95,7 +95,7 @@ main = withSocketsDo $ do
     "[?] Legend: ? information, ~ warning, ! error, * exception, $ shell"
 
   -- Fork into the main listening thread
-  forkIO $ (`finally` sClose sock) . forever $ do
+  forkIO $ (`finally` sClose sock) . forever . handle $ do
     (h, host, port) <- accept sock
     hSetBuffering h NoBuffering
 
@@ -103,6 +103,7 @@ main = withSocketsDo $ do
     putStrLn $ "[?] Accepted connection from " ++ show host ++ ':': show port
 
     forkIO $ runThread h host meta `finally` runP2P meta (close h host)
+    return ()
 
   handleInput meta
 
@@ -138,7 +139,7 @@ connect m host port = do
   return ()
 
 runThread :: Handle -> HostName -> Meta -> IO ()
-runThread h host m = do
+runThread h host m = handle $ do
   eof <- hIsEOF h
   unless eof $ do
    packet <- hGetLine h

@@ -12,6 +12,8 @@ import           Control.Monad.Writer (tell)
 import           Data.List (delete)
 import           Data.Maybe (isJust, fromJust)
 
+import           GHC.IO.Handle (hClose)
+
 import           Network (HostName)
 
 import           P2P
@@ -81,6 +83,21 @@ instance Parsable RSection where
     IAm (Base64 id) (Base64 adr) (Base64 port) -> do
       (h, host) <- getContextHandle
       addConnection h host port id adr
+
+    DialIn -> do
+      -- Collect random peer info, queue it up somehow, reply with Offer.
+      -- The following is for debugging purposes only!
+      (h, _) <- getContextHandle
+      hSend h $ Packet [mkOffer 0.7] []
+      liftIO  $ hClose h
+
+      -- Close the connection as well
+      return ()
+
+    Offer (Base64 addr) -> do
+      -- Proper behavior: Adopt this into the P2PState
+      liftIO . putStrLn $ "[?] Received address offer: " ++ show addr
+      return ()
 
     RUnknown bs ->
       throwError $ "Unknown RSection: " ++ show bs
