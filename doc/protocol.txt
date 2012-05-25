@@ -200,6 +200,17 @@ The routing header may contain the following sections:
   PEER for every known peer on his end.
 
 
+  QUIT section:
+
+  > QUIT
+
+  Indicates that the source id/address for the packet is no longer existant in
+  the routing network. This has the effect of all key tables being purged, as
+  well as the Id -> Address DHT entries. In addition, clients recieving this
+  section must disconnect from the source ID if present in their connection
+  buffer.
+
+
 The routing header must adhere to the following rules:
 
 - The TARGET section must be present (unless packet is no-route)

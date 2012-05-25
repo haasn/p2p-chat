@@ -70,6 +70,7 @@ data RSection
   | Version (Base64 Integer)
   | Support (Base64 Integer)
   | Drop (Base64 Address)
+  | Quit
 
   -- No-route sections
   | Identify
