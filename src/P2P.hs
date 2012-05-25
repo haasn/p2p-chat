@@ -215,6 +215,8 @@ isNoRoute :: RSection -> Bool
 isNoRoute rsec = case rsec of
   Identify -> True
   IAm{}    -> True
+  Offer{}  -> True
+  DialIn   -> True
 
   _ -> False
 

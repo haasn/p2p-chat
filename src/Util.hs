@@ -66,6 +66,7 @@ mkVersion v = Version (Base64 v)
 mkSupport v = Support (Base64 v)
 mkDrop addr = Drop (Base64 addr)
 mkIAm id addr port = IAm (Base64 id) (Base64 addr) (Base64 port)
+mkOffer addr = Offer (Base64 addr)
 
 mkMessage mt msg = Message mt (pack msg) Signature
 mkKey k = Key (Base64 (RSA k)) Signature

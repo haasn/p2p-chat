@@ -57,18 +57,6 @@ sendAddr tt rh cs a = do
     CW  -> (head <$> gets  cwConn) >>= send (Packet rh' cs)
     CCW -> (head <$> gets ccwConn) >>= send (Packet rh' cs)
 
--- Less general alternatives for convenience
-
-sendGlobal :: Content -> P2P ()
-sendGlobal = sendGlobal' []
-
-sendExact :: Content -> Address -> P2P ()
-sendExact = sendAddr Exact []
-
-sendApprox :: Content -> Address -> P2P ()
-sendApprox = sendAddr Approx []
-
-
 -- Higher order packet sending functions
 
 sendDrop :: Address -> Address -> P2P ()
@@ -82,8 +70,8 @@ sendWhereIs id = sendApprox [mkWhereIs id] (hashId id)
 
 -- Special context-dependent reply functions
 
-reply :: Content -> P2P ()
-reply cs = replyAddr >>= sendExact cs
+reply' :: RoutingHeader -> Content -> P2P ()
+reply' rh cs = replyAddr >>= sendAddr Exact rh cs
 
 replyAddr :: P2P Address
 replyAddr = wrapError replyAddr' "Trying to reply to unknown address"
@@ -109,6 +97,20 @@ replyMirror cs = do
   let addrs = map remoteAddr conns
 
   mapM_ (sendExact cs) addrs
+
+-- Less general alternatives for convenience
+
+sendGlobal :: Content -> P2P ()
+sendGlobal = sendGlobal' []
+
+sendExact :: Content -> Address -> P2P ()
+sendExact = sendAddr Exact []
+
+sendApprox :: Content -> Address -> P2P ()
+sendApprox = sendAddr Approx []
+
+reply :: Content -> P2P ()
+reply = reply' []
 
 -- Helper function for generating header stubs
 

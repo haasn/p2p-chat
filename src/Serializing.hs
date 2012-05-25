@@ -37,7 +37,9 @@ instance Serializable RSection where
   encode (Support    v  ) = section "SUPPORT"    [encode v]
   encode (Drop       a  ) = section "DROP"       [encode a]
   encode (IAm      i a p) = section "IAM"        [encode i, encode a, encode p]
+  encode (Offer      a  ) = section "OFFER"      [encode a]
   encode (Identify      ) = section "IDENTIFY"   []
+  encode (DialIn        ) = section "DIALIN"     []
   encode (Quit          ) = section "QUIT"       []
 
   encode RUnknown{} = throwError "Trying to encode RUnknown"
@@ -53,7 +55,9 @@ instance Serializable RSection where
     ("support"   , [v    ]) -> Support (decode v)
     ("drop"      , [a    ]) -> Drop (decode a)
     ("iam"       , [i,a,p]) -> IAm (decode i) (decode a) (decode p)
+    ("offer"     , [a    ]) -> Offer (decode a)
     ("identify"  , [     ]) -> Identify
+    ("dialin"    , [     ]) -> DialIn
     ("quit"      , [     ]) -> Quit
 
     _ -> RUnknown bs
@@ -217,8 +221,13 @@ instance Serializable Packet where
     [encode rh, return $ pack "|", encode c]
 
                                  -- Drop the ‘|’ too
-  decode bs = Packet (decode rh) (decode $ BS.tail c)
-    where (rh, c) = BS.breakSubstring (pack "|") bs
+  decode bs = Packet (decode rh) tailsec
+    where
+      (rh, c) = BS.breakSubstring (pack "|") bs
+      tailsec
+        | BS.null c = []
+        | otherwise = decode $ BS.tail c
+
 
 -- Helper function for RSA serialization
 

@@ -75,6 +75,8 @@ data RSection
   -- No-route sections
   | Identify
   | IAm (Base64 Id) (Base64 Address) (Base64 Port)
+  | DialIn
+  | Offer (Base64 Address)
 
   -- For parsing failures
   | RUnknown ByteString
