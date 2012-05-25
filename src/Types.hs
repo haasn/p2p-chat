@@ -75,8 +75,6 @@ data RSection
   -- No-route sections
   | Identify
   | IAm (Base64 Id) (Base64 Address) (Base64 Port)
-  | Peer (Base64 HostName) (Base64 Port)
-  | Panic
 
   -- For parsing failures
   | RUnknown ByteString
@@ -102,6 +100,11 @@ data CSection
   | HereIs (Base64 Id) (Base64 Address)
   | NotFound (Base64 Id)
   | Update (Base64 Address) Signature
+
+  -- Dial-in and recovery
+
+  | Request
+  | Peer (Base64 HostName) (Base64 Port) (Base64 Address)
 
   -- For parsing failures
   | CUnknown ByteString

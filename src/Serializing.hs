@@ -30,19 +30,17 @@ import           P2P.Util
 -- Section coding
 
 instance Serializable RSection where
-  encode (Target     t a  ) = section "TARGET"     [encode t, encode a]
-  encode (Source     i _  ) = section "SOURCE"     [encode i, signLast]
-  encode (SourceAddr a _  ) = section "SOURCEADDR" [encode a, signLast]
-  encode (Version    v    ) = section "VERSION"    [encode v]
-  encode (Support    v    ) = section "SUPPORT"    [encode v]
-  encode (Drop       a    ) = section "DROP"       [encode a]
-  encode (IAm        i a p) = section "IAM"        [encode i, encode a, encode p]
-  encode (Identify        ) = section "IDENTIFY"   []
-  encode (Peer       h p  ) = section "PEER"       [encode h, encode p]
-  encode (Panic           ) = section "PANIC"      []
-  encode (Quit            ) = section "QUIT"       []
+  encode (Target     t a) = section "TARGET"     [encode t, encode a]
+  encode (Source     i _) = section "SOURCE"     [encode i, signLast]
+  encode (SourceAddr a _) = section "SOURCEADDR" [encode a, signLast]
+  encode (Version    v  ) = section "VERSION"    [encode v]
+  encode (Support    v  ) = section "SUPPORT"    [encode v]
+  encode (Drop       a  ) = section "DROP"       [encode a]
+  encode (IAm      i a p) = section "IAM"        [encode i, encode a, encode p]
+  encode (Identify      ) = section "IDENTIFY"   []
+  encode (Quit          ) = section "QUIT"       []
 
-  encode (RUnknown   _    ) = throwError "Trying to encode RUnknown"
+  encode RUnknown{} = throwError "Trying to encode RUnknown"
 
   decode bs = case parseSection (splitSection bs) of
     ("target", tt:l) -> case decode tt of
@@ -56,8 +54,6 @@ instance Serializable RSection where
     ("drop"      , [a    ]) -> Drop (decode a)
     ("iam"       , [i,a,p]) -> IAm (decode i) (decode a) (decode p)
     ("identify"  , [     ]) -> Identify
-    ("peer"      , [h,p  ]) -> Peer (decode h) (decode p)
-    ("panic"     , [     ]) -> Panic
     ("quit"      , [     ]) -> Quit
 
     _ -> RUnknown bs
@@ -78,21 +74,25 @@ instance Serializable CSection where
   encode (HereIs   i a) = section "HEREIS"   [encode i, encode a]
   encode (NotFound   i) = section "NOTFOUND" [encode i]
   encode (Update   a _) = section "UPDATE"   [encode a, signLast]
+  encode (Request     ) = section "REQUEST"  []
+  encode (Peer   h p a) = section "PEER"     [encode h, encode p, encode a]
 
-  encode (CUnknown _  ) = throwError "Trying to encode CUnknown"
+  encode CUnknown{} = throwError "Trying to encode CUnknown"
 
   decode bs = case parseSection (splitSection bs) of
-    ("key", [k,s]) -> Key (decode k) (Verify k s)
-    ("whois", [n]) -> WhoIs (decode n)
-    ("thisis", [n,i]) -> ThisIs (decode n) (decode i)
-    ("noexist", [n]) -> NoExist (decode n)
-    ("register", [n,s]) -> Register (decode n) (Verify n s)
-    ("exist", [n]) -> Exist (decode n)
-    ("whereis", [i]) -> WhereIs (decode i)
-    ("hereis", [i,a]) -> HereIs (decode i) (decode a)
-    ("notfound", [i]) -> NotFound (decode i)
-    ("update", [a,s]) -> Update (decode a) (Verify a s)
-    ("message", [t,m,s]) -> Message (decode t) m (Verify m s)
+    ("key"     , [k,s  ]) -> Key (decode k) (Verify k s)
+    ("whois"   , [n    ]) -> WhoIs (decode n)
+    ("thisis"  , [n,i  ]) -> ThisIs (decode n) (decode i)
+    ("noexist" , [n    ]) -> NoExist (decode n)
+    ("register", [n,s  ]) -> Register (decode n) (Verify n s)
+    ("exist"   , [n    ]) -> Exist (decode n)
+    ("whereis" , [i    ]) -> WhereIs (decode i)
+    ("hereis"  , [i,a  ]) -> HereIs (decode i) (decode a)
+    ("notfound", [i    ]) -> NotFound (decode i)
+    ("update"  , [a,s  ]) -> Update (decode a) (Verify a s)
+    ("message" , [t,m,s]) -> Message (decode t) m (Verify m s)
+    ("request" , [     ]) -> Request
+    ("peer"    , [h,p,a]) -> Peer (decode h) (decode p) (decode a)
 
     _ -> CUnknown bs
 

@@ -180,24 +180,7 @@ The routing header may contain the following sections:
   > IAM {ID} {ADDRESS} {PORT}
 
   A special identification section. This section must never be routed to other
-  peers, it is solely for identifying new peers after connectiong to them.
-
-
-  PEER section:
-
-  > PEER {HOSTNAME} {PORT}
-
-  A special peer discovery section, used in case of connection loss and for
-  the initial dial-in.
-
-
-  PANIC section:
-
-  > PANIC
-
-  A special section used for when the number on connections on either side
-  drops below the critical value (eg. 3), a client sent this should respond with
-  PEER for every known peer on his end.
+  peers, it is solely for identifying new peers after connecting to them.
 
 
   QUIT section:
@@ -215,8 +198,8 @@ The routing header must adhere to the following rules:
 
 - The TARGET section must be present (unless packet is no-route)
 - The SOURCE section must be present (unless packet is no-route)
-- If the packet contains any IDENTIFY, IAM, PANIC or PEER, it is no-route and
-  must never be routed under any circumstances.
+- If the packet contains any IDENTIFY or IAM it is no-route and must never be
+  routed under any circumstances.
 
 Any packets not complying with these restrictions shall be discarded
 immediately and without further notice.
@@ -374,6 +357,18 @@ The content may content the following sections:
   > EXIST {nand}
 
 
-<TODO:>
+  = Dial-in and recovery =
 
-- Add missing sections, eg. connection negotiation and repair.
+  REQUEST section:
+
+  A special section used for when the number of connections on either side
+  drops below the critical value (eg. 3), a client sent this should respond
+  with a PEER for every known peer on his end. This is also used for the
+  initial dial-in.
+
+  PEER section:
+
+  > PEER {HOSTNAME} {PORT} {ADDRESS}
+
+  A special peer discovery section, used in case of connection loss and for
+  the initial dial-in.

@@ -66,7 +66,6 @@ mkVersion v = Version (Base64 v)
 mkSupport v = Support (Base64 v)
 mkDrop addr = Drop (Base64 addr)
 mkIAm id addr port = IAm (Base64 id) (Base64 addr) (Base64 port)
-mkPeer host port = Peer (Base64 host) (Base64 port)
 
 mkMessage mt msg = Message mt (pack msg) Signature
 mkKey k = Key (Base64 (RSA k)) Signature
@@ -79,6 +78,7 @@ mkWhereIs id = WhereIs (Base64 id)
 mkHereIs id addr = HereIs (Base64 id) (Base64 addr)
 mkNotFound id = NotFound (Base64 id)
 mkUpdate addr = Update (Base64 addr) Signature
+mkPeer host port addr = Peer (Base64 host) (Base64 port) (Base64 addr)
 
 -- Higher order composition
 

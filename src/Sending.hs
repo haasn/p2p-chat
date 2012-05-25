@@ -74,9 +74,6 @@ sendApprox = sendAddr Approx []
 sendDrop :: Address -> Address -> P2P ()
 sendDrop adr = sendAddr Exact [mkDrop adr] []
 
-sendPanic :: Connection -> P2P ()
-sendPanic = sendHeader [Panic]
-
 sendWhoIs :: Name -> P2P ()
 sendWhoIs name = sendApprox [mkWhoIs name] (hashName name)
 

@@ -75,18 +75,8 @@ instance Parsable RSection where
     Identify -> do
       h     <- fst <$> getContextHandle
       iam   <- mkIAm <$> gets pubKey <*> gets homeAddr <*> ask
-      known <- safePeers
 
-      hSend h $ Packet (iam : map (uncurry mkPeer) known) []
-
-    Panic -> do
-      h     <- fst <$> getContextHandle
-      known <- safePeers
-      hSend h $ Packet (map (uncurry mkPeer) known) []
-
-    Peer (Base64 host) (Base64 port) -> do
-      known <- peers
-      unless ((host, port) `elem` known) $ tell [(host, port)]
+      hSend h $ Packet [iam] []
 
     IAm (Base64 id) (Base64 adr) (Base64 port) -> do
       (h, host) <- getContextHandle
@@ -94,22 +84,6 @@ instance Parsable RSection where
 
     RUnknown bs ->
       throwError $ "Unknown RSection: " ++ show bs
-
-    where
-      peers :: P2P [(HostName, Port)]
-      peers = do
-        conns <- (++) <$> gets cwConn <*> gets ccwConn
-        let hosts = map hostName conns
-        let ports = map hostPort conns
-        return $ zip hosts ports
-
-      -- Like peers but omits the peer's own address
-      safePeers :: P2P [(HostName, Port)]
-      safePeers = do
-        unsafe <- peers
-        conn   <- (fst <$> getContextHandle) >>= findConnection
-        return $
-          maybe unsafe (\c -> delete (hostName c, hostPort c) unsafe) conn
 
 instance Parsable CSection where
   parse csec = case csec of
@@ -157,6 +131,14 @@ instance Parsable CSection where
       replyMirror [mkHereIs id addr]
       hasAddr id
 
+    Request -> do
+      known <- safePeers
+      reply $ map (uncurry3 mkPeer) known
+
+    Peer (Base64 host) (Base64 port) (Base64 addr) -> do
+      known <- peers
+      unless ((host, port, addr) `elem` known) $ tell [(host, port)]
+
     -- Failure messages
 
     NoExist (Base64 name) -> noId name >> liftIO (putStrLn $
@@ -181,6 +163,26 @@ instance Parsable CSection where
 
     CUnknown bs ->
       throwError $ "Unknown CSection: " ++ show bs
+
+    where
+      peers :: P2P [(HostName, Port, Address)]
+      peers = do
+        conns <- (++) <$> gets cwConn <*> gets ccwConn
+        let hosts = map hostName conns
+        let ports = map hostPort conns
+        let addrs = map remoteAddr conns
+        return $ zip3 hosts ports addrs
+
+      -- Like peers but omits the peer's own address
+      safePeers :: P2P [(HostName, Port, Address)]
+      safePeers = do
+        unsafe <- peers
+        conn   <- (fst <$> getContextHandle) >>= findConnection
+        return $ maybe unsafe
+          (\c -> delete (hostName c, hostPort c, remoteAddr c) unsafe) conn
+
+      uncurry3 :: (a1 -> a2 -> a3 -> b) -> (a1,a2,a3) -> b
+      uncurry3 f (a,b,c) = f a b c
 
 -- Signature verification logic
 
