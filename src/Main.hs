@@ -16,7 +16,7 @@ import           Control.Monad.State.Strict
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
-import           Data.ByteString (hGetLine)
+import qualified Data.ByteString.Lazy.Char8 as LBS
 import           Data.Char (toLower)
 import qualified Data.Map as Map
 
@@ -141,13 +141,13 @@ connect m host port = do
 runThread :: Handle -> HostName -> Meta -> IO ()
 runThread h host m = handle $ do
   -- Get all input lazily, split by lines
-  ls <- lines <$> hGetContents h
+  ls <- LBS.lines <$> LBS.hGetContents h
   mapM_ (runP2P m . go) ls
 
   where
     -- Pack a packet into a strict bytestring for reprocessing
-    go :: String -> P2P ()
-    go packet = process h host (pack packet) >> prune
+    go :: LBS.ByteString -> P2P ()
+    go packet = process h host (fromLazy packet) >> prune
 
 -- Close a handle
 
