@@ -1,12 +1,16 @@
 module P2P.Queue where
 
 import           Control.Monad.State.Strict (get, put)
+import           Control.Monad.Writer (tell)
 
 import           Data.List (partition)
+
+import           Network (HostName)
 
 import           P2P
 import           P2P.Sending
 import           P2P.Types
+import           P2P.Util
 
 -- Functions to modify the queue
 
@@ -30,8 +34,9 @@ hasId name = modifyQueue $ \queue -> do
   return rest
 
   where
-    f (NeedAddr _ _) = False
     f (NeedId   n _) = n == name
+    f NeedAddr{}     = False
+    f NeedPeers{}    = False
 
 hasAddr :: Id -> P2P ()
 hasAddr id = modifyQueue $ \queue -> do
@@ -42,8 +47,24 @@ hasAddr id = modifyQueue $ \queue -> do
   return rest
 
   where
-    f (NeedId   _ _) = False
+    f NeedId{}       = False
     f (NeedAddr i _) = i == id
+    f NeedPeers{}    = False
+
+hasPeers :: [(HostName, Port, Address)] -> P2P ()
+hasPeers pl = modifyQueue $ \queue -> do
+  let (match, rest) = removeFirst f queue
+
+  case match of
+    Just (NeedPeers a) -> a pl
+    _                  -> tell $ map (\(a,b,_) -> (a,b)) pl
+
+  return rest
+
+  where
+    f NeedId{}    = False
+    f NeedAddr{}  = False
+    f NeedPeers{} = True
 
 -- Functions to delete delayed actions from the queue for which no appropriate
 -- information could be found, eg. due to a NOEXIST or NOTFOUND.
@@ -51,14 +72,16 @@ hasAddr id = modifyQueue $ \queue -> do
 noId :: Name -> P2P ()
 noId name = modifyQueue $ return . filter f
   where
-    f (NeedAddr _ _) = True
     f (NeedId   n _) = n /= name
+    f NeedAddr{}     = True
+    f NeedPeers{}    = True
 
 noAddr :: Id -> P2P ()
 noAddr id = modifyQueue $ return . filter f
   where
-    f (NeedId   _ _) = True
+    f NeedId{}       = True
     f (NeedAddr i _) = i /= id
+    f NeedPeers{}    = True
 
 -- Functions to perform DHT lookups and/or delay processing
 
@@ -79,3 +102,6 @@ withName name f = do
     Nothing -> do
       enqueue $ NeedId name (`withId` f)
       sendWhoIs name
+
+withPeers :: ([(HostName, Port, Address)] -> P2P ()) -> P2P ()
+withPeers = enqueue . NeedPeers

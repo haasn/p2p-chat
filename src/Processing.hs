@@ -6,6 +6,7 @@ import           Control.Monad.State.Strict
 
 import           Data.ByteString (ByteString)
 import           Data.List (find)
+import           Data.Maybe (isJust)
 
 import           GHC.IO.Handle
 
@@ -22,6 +23,9 @@ import           P2P.Types
 
 process :: Handle -> HostName -> ByteString -> P2P ()
 process h host bs = do
+  -- Debugging purposes
+  liftIO . putStrLn $ "[?] " ++ show bs
+
   let p@(Packet rh _) = decode bs
 
   resetContext
@@ -36,12 +40,16 @@ process h host bs = do
 
 route :: ByteString -> Packet -> P2P ()
 route bs (Packet rh _) = do
-  myId   <- gets pubKey
-  myAddr <- gets homeAddr
-  isMe <- getIsMe
+  myId    <- gets pubKey
+  myAddr' <- gets homeAddr
+  isMe    <- getIsMe
+
+  unless (isJust myAddr') $
+    throwError "No currently assigned address, cannot route"
 
   let Just (Source (Base64 id) _) = find isSource rh
   let Just (Target tt a) = find isTarget rh
+  let Just myAddr = myAddr'
 
   case tt of
     TGlobal ->

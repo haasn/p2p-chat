@@ -5,16 +5,12 @@ import           Control.Applicative
 import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.Reader (ask)
-import           Control.Monad.State.Strict (gets)
+import           Control.Monad.State.Strict (gets, modify)
 import           Control.Monad.Trans (liftIO)
-import           Control.Monad.Writer (tell)
 
-import           Data.List (delete)
 import           Data.Maybe (isJust, fromJust)
 
 import           GHC.IO.Handle (hClose)
-
-import           Network (HostName)
 
 import           P2P
 import           P2P.Crypto
@@ -27,7 +23,7 @@ import           P2P.Util
 instance Parsable RSection where
   parse rsec = case rsec of
     Target tt ma -> do
-      myAdr <- gets homeAddr
+      Just myAdr <- gets homeAddr
 
       -- Separate and decode the address
       Base64 adr <-
@@ -75,32 +71,32 @@ instance Parsable RSection where
     -- No-route sections
 
     Identify -> do
-      h     <- fst <$> getContextHandle
-      iam   <- mkIAm <$> gets pubKey <*> gets homeAddr <*> ask
+      h    <- fst <$> getContextHandle
+      addr <- gets homeAddr
 
-      hSend h $ Packet [iam] []
+      when (isJust addr) $ do
+        iam   <- mkIAm <$> gets pubKey <*> pure (fromJust addr) <*> ask
+        hSend h $ Packet [iam] []
 
     IAm (Base64 id) (Base64 adr) (Base64 port) -> do
       (h, host) <- getContextHandle
       addConnection h host port id adr
 
     DialIn -> do
-      -- Collect random peer info, queue it up somehow, reply with Offer.
-      -- The following is for debugging purposes only!
       (h, _) <- getContextHandle
-      hSend h $ Packet [mkOffer 0.7] []
-      liftIO  $ hClose h
 
-      -- Close the connection as well
-      return ()
+      withPeers $ \peers -> do
+        hSend h $ Packet [mkOffer 0.7] (map (uncurry3 mkPeer) peers)
+        liftIO  $ hClose h
 
-    Offer (Base64 addr) -> do
-      -- Proper behavior: Adopt this into the P2PState
-      liftIO . putStrLn $ "[?] Received address offer: " ++ show addr
-      return ()
+      -- Send off a random REQUEST now that we've queued up the withPeers
+      sendApprox [Request] 0.5
+
+    Offer (Base64 addr) ->
+      modify $ \st -> st { homeAddr = Just addr }
 
     RUnknown bs ->
-      throwError $ "Unknown RSection: " ++ show bs
+      throwError $ "Unknown or malformed RSection: " ++ show bs
 
 instance Parsable CSection where
   parse csec = case csec of
@@ -152,9 +148,10 @@ instance Parsable CSection where
       known <- safePeers
       reply $ map (uncurry3 mkPeer) known
 
-    Peer (Base64 host) (Base64 port) (Base64 addr) -> do
-      known <- peers
-      unless ((host, port, addr) `elem` known) $ tell [(host, port)]
+    Peer (Base64 host) (Base64 port) (Base64 addr) ->
+      -- This is handled separately in Packet's parse because of the involvement
+      -- of a bootstrapping queue, so just pass it into the context.
+      ctxAddPeer (host, port, addr)
 
     -- Failure messages
 
@@ -179,27 +176,7 @@ instance Parsable CSection where
           in  unAES msg >>= liftIO . putStrLn
 
     CUnknown bs ->
-      throwError $ "Unknown CSection: " ++ show bs
-
-    where
-      peers :: P2P [(HostName, Port, Address)]
-      peers = do
-        conns <- (++) <$> gets cwConn <*> gets ccwConn
-        let hosts = map hostName conns
-        let ports = map hostPort conns
-        let addrs = map remoteAddr conns
-        return $ zip3 hosts ports addrs
-
-      -- Like peers but omits the peer's own address
-      safePeers :: P2P [(HostName, Port, Address)]
-      safePeers = do
-        unsafe <- peers
-        conn   <- (fst <$> getContextHandle) >>= findConnection
-        return $ maybe unsafe
-          (\c -> delete (hostName c, hostPort c, remoteAddr c) unsafe) conn
-
-      uncurry3 :: (a1 -> a2 -> a3 -> b) -> (a1,a2,a3) -> b
-      uncurry3 f (a,b,c) = f a b c
+      throwError $ "Unknown or malformed CSection: " ++ show bs
 
 -- Signature verification logic
 
@@ -228,6 +205,10 @@ instance Parsable Packet where
       then do
         isme <- getIsMe
         when isme $ parse cs
+
+        -- Check for PEERs and handle as needed
+        peers <- ctxPeers <$> gets context
+        hasPeers peers
 
       else unless (any isNoRoute rh) $
         throwError "Not a valid packet due to missing sections"

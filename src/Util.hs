@@ -7,6 +7,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
 import qualified Data.Char (ord)
+import           Data.List (find)
 import           Data.String (fromString)
 import           Data.Text()
 import           Data.Text.Encoding (encodeUtf8)
@@ -57,6 +58,17 @@ pack = encodeUtf8 . fromString
 ord :: Integral a => Char -> a
 ord = fromIntegral . Data.Char.ord
 
+-- Extract the first element satisfying a predicate from a list
+
+removeFirst :: (a -> Bool) -> [a] -> (Maybe a, [a])
+removeFirst f xs = (find f xs, dropFirst f xs)
+
+dropFirst :: (a -> Bool) -> [a] -> [a]
+dropFirst _ [] = []
+dropFirst f (x:xs)
+  | f x = xs
+  | otherwise = x : dropFirst f xs
+
 -- Wrappers for section constructors
 
 mkTarget tt addr = Target tt (Base64 `fmap` addr)
@@ -81,7 +93,10 @@ mkNotFound id = NotFound (Base64 id)
 mkUpdate addr = Update (Base64 addr) Signature
 mkPeer host port addr = Peer (Base64 host) (Base64 port) (Base64 addr)
 
--- Higher order composition
+-- Higher order composition and currying
 
 (.:) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (.:) = (.).(.)
+
+uncurry3 :: (a1 -> a2 -> a3 -> b) -> (a1,a2,a3) -> b
+uncurry3 f (a,b,c) = f a b c

@@ -8,8 +8,9 @@ import           Crypto.Random (SystemRandom)
 
 import           Data.ByteString (ByteString)
 import qualified Data.Foldable as F (forM_)
-import           Data.List (find)
+import           Data.List (find, delete)
 import qualified Data.Map as Map
+import           Data.Maybe (fromMaybe)
 
 import           GHC.IO.Handle
 
@@ -59,15 +60,17 @@ findConnection h = do
 
 insertConnection :: Connection -> P2PState -> P2PState
 insertConnection c st =
-  case dir (homeAddr st) (remoteAddr c) of
+  case dir addr (remoteAddr c) of
     CW  -> st { cwConn  = insert (cwConn  st) }
     CCW -> st { ccwConn = insert (ccwConn st) }
 
   where
     insert :: [Connection] -> [Connection]
     insert cs = let (l,g) = span (\p -> dista p < distb) cs in l ++ [c] ++ g
-      where dista p = dist (homeAddr st) (remoteAddr p)
-            distb   = dist (homeAddr st) (remoteAddr c)
+      where dista p = dist addr (remoteAddr p)
+            distb   = dist addr (remoteAddr c)
+
+    addr = fromMaybe 0 $ homeAddr st
 
 updateConn :: Handle -> Id -> Address -> [Connection] -> [Connection]
 updateConn _ _ _ [] = []
@@ -84,6 +87,22 @@ updateCCW :: ([Connection] -> P2P [Connection]) -> P2P ()
 updateCCW f = do
   cs <- gets ccwConn >>= f
   modify $ \st -> st { ccwConn = cs }
+
+knownPeers :: P2P [(HostName, Port, Address)]
+knownPeers = do
+  conns <- (++) <$> gets cwConn <*> gets ccwConn
+  let hosts = map hostName conns
+  let ports = map hostPort conns
+  let addrs = map remoteAddr conns
+  return $ zip3 hosts ports addrs
+
+-- Like knownPeers but omits the peer's own address
+safePeers :: P2P [(HostName, Port, Address)]
+safePeers = do
+  unsafe <- knownPeers
+  conn   <- (fst <$> getContextHandle) >>= findConnection
+  return $ maybe unsafe
+    (\c -> delete (hostName c, hostPort c, remoteAddr c) unsafe) conn
 
 -- Context functions
 
@@ -165,6 +184,9 @@ getLastField = do
   case field of
     Nothing -> throwError "No previously serialized field"
     Just f  -> return f
+
+ctxAddPeer :: (HostName, Port, Address) -> P2P ()
+ctxAddPeer p = modifyContext $ \ctx -> ctx { ctxPeers = p : ctxPeers ctx }
 
 -- Map processing
 

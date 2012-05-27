@@ -50,7 +50,7 @@ sendGlobal' rh cs = do
 sendAddr :: TargetType -> RoutingHeader -> Content -> Address -> P2P ()
 sendAddr tt rh cs a = do
   base <- makeHeader
-  home <- gets homeAddr
+  Just home <- gets homeAddr
   let rh' = mkTarget tt (Just a) : rh ++ base
 
   case dir home a of
@@ -119,9 +119,13 @@ makeHeader = do
   id   <- gets pubKey
   addr <- gets homeAddr
 
-  return
-    [ mkSource id
-    , mkSourceAddr addr
-    , mkVersion 1
+  return $
+    [ mkSource id ]
+    ++
+      case addr of
+        Just a  -> [mkSourceAddr a]
+        Nothing -> []
+    ++
+    [ mkVersion 1
     , mkSupport 1
     ]

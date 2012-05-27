@@ -28,7 +28,7 @@ data P2PState = P2PState
   , dhtQueue  :: Queue
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey
-  , homeAddr  :: Address
+  , homeAddr  :: Maybe Address
   , randomGen :: SystemRandom
   , context   :: Context
   }
@@ -127,6 +127,7 @@ data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
 data Delayed
   = NeedId Name (Id -> P2P ())
   | NeedAddr Id (Address -> P2P ())
+  | NeedPeers ([(HostName, Port, Address)] -> P2P ())
 
 -- Directional types for transfers
 
@@ -163,6 +164,7 @@ data Context = Context
   , ctxKey     :: Maybe AESKey
   , lastField  :: Maybe ByteString
   , ctxHandle  :: Maybe (Handle, HostName)
+  , ctxPeers   :: [(HostName, Port, Address)]
   , ctxIsMe    :: Bool
   }
  deriving (Eq, Show)
@@ -176,4 +178,4 @@ instance Ord PublicKey where
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing Nothing Nothing False
+nullContext = Context Nothing Nothing Nothing Nothing Nothing [] False

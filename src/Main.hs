@@ -65,7 +65,7 @@ newState = do
     , dhtQueue  = []
     , pubKey    = pub
     , privKey   = priv
-    , homeAddr  = 0.5
+    , homeAddr  = Nothing
     , randomGen = newgen
     , context   = nullContext
     }
@@ -128,21 +128,35 @@ handleInput m = forever . handle $ do
 
     _ -> putStrLn "[$] Unrecognized input"
 
+-- Connect to a peer, for whatever purpose
+-- Also sends IAM/IDENTIFY or DIALIN as needed
+
 connect :: Meta -> HostName -> Port -> IO ()
 connect m host port = do
   h <- connectTo host (PortNumber port)
   putStrLn $ "[?] Connected to " ++ show host ++ ':': show port
   runP2P m $ do
-    iam <- mkIAm <$> gets pubKey <*> gets homeAddr <*> ask
-    hSend h $ Packet [Identify, iam] []
+    addr <- gets homeAddr
+    case addr of
+      -- If we have an address, send IAM
+      Just a -> do
+        iam <- mkIAm <$> gets pubKey <*> pure a <*> ask
+        hSend h $ Packet [Identify, iam] []
+
+      -- Otherwise, send a DIALIN
+      Nothing ->
+        hSend h $ Packet [DialIn] []
+
   forkIO $ runThread h host m `finally` runP2P m (close h host)
   return ()
 
+-- Read/Process/Send loop, used for forkIO
+
 runThread :: Handle -> HostName -> Meta -> IO ()
-runThread h host m = handle $ do
+runThread h host m = do
   -- Get all input lazily, split by lines
   ls <- LBS.lines <$> LBS.hGetContents h
-  mapM_ (runP2P m . go) ls
+  mapM_ (handle . runP2P m . go) ls
 
   where
     -- Pack a packet into a strict bytestring for reprocessing
