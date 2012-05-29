@@ -2,6 +2,7 @@ module Main where
 
 import           Codec.Crypto.RSA (generateKeyPair)
 
+import           Control.Concurrent (newEmptyMVar)
 import           Control.Monad.Error (runErrorT)
 import           Control.Monad.RWS.Strict (evalRWST)
 import           Control.Monad.State (get, put)
@@ -104,7 +105,8 @@ main = do
 
 newState :: IO P2PState
 newState = do
-  gen <- newGenIO :: IO SystemRandom
+  gen  <- newGenIO :: IO SystemRandom
+  mvar <- newEmptyMVar
   let (pub, priv, newgen) = generateKeyPair gen 2048
   return P2PState
     { cwConn    = []
@@ -117,6 +119,7 @@ newState = do
     , privKey   = priv
     , homeAddr  = Just 0.1234
     , randomGen = newgen
+    , loopback  = mvar
     , context   = Context
-        (Just pub) (Just 0.1234) Nothing Nothing Nothing [] True
+        (Just pub) (Just 0.1234) Nothing Nothing Nothing Nothing True
     }

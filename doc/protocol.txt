@@ -96,27 +96,14 @@ The routing header may contain the following sections:
 
   SOURCE section:
 
-  > SOURCE {ID} {ID.SIGNATURE}
+  > SOURCE {ID} {ID.SIGNATURE} {ADDRESS} {ADDRESS.SIGNATURE}
 
-  “ID” must be the identifying public key of the packet's original sender.
-
-  Examples:
-
-  > SOURCE 3f1f10b8d7 {3f1f10b8d7}
-
-
-  SOURCEADDR section:
-
-  > SOURCEADDR {ADDRESS} {ADDRESS.SIGNATURE}
-
-  “ADDRESS” corresponds to the original sender's address. This section is
-  entirely optional, and serves mainly to speed up negotiatons. However, it is
-  to be noted that it can not necessarily be trusted. If it is missing, the
-  return address will instead be queried from the DHT.
+  “ID” must be the identifying public key of the packet's original sender,
+  while “ADDRESS” corresponds to the original sender's address.
 
   Examples:
 
-  > SOURCEADDR {0.513}
+  > SOURCE {3f1f10b8d7} {0.513}
 
 
   VERSION section:

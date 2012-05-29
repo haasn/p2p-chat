@@ -72,8 +72,7 @@ dropFirst f (x:xs)
 -- Wrappers for section constructors
 
 mkTarget tt addr = Target tt (Base64 `fmap` addr)
-mkSource id = Source (Base64 id) Signature
-mkSourceAddr addr = SourceAddr (Base64 addr) Signature
+mkSource id addr = Source (Base64 id) Signature (Base64 addr) Signature
 mkVersion v = Version (Base64 v)
 mkSupport v = Support (Base64 v)
 mkDrop addr = Drop (Base64 addr)

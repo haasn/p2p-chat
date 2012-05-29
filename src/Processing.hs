@@ -47,7 +47,7 @@ route bs (Packet rh _) = do
   unless (isJust myAddr') $
     throwError "No currently assigned address, cannot route"
 
-  let Just (Source (Base64 id) _) = find isSource rh
+  let Just (Source (Base64 id) _ _ _) = find isSource rh
   let Just (Target tt a) = find isTarget rh
   let Just myAddr = myAddr'
 

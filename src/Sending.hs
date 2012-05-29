@@ -154,12 +154,9 @@ makeHeader = do
   id   <- gets pubKey
   addr <- gets homeAddr
 
-  return $
-    [ mkSource id ]
-    ++
-      case addr of
-        Just a  -> [mkSourceAddr a]
-        Nothing -> []
+  return $ case addr of
+      Just a  -> [mkSource id a]
+      Nothing -> []
     ++
     [ mkVersion 1
     , mkSupport 1

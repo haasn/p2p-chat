@@ -47,18 +47,18 @@ instance Parsable RSection where
             next:_ -> when (dist adr myAdr <= dist adr (remoteAddr next))
                         setIsMe
 
-    Source (Base64 id) s ->
-      loadContext id >> parse s
-
-    SourceAddr (Base64 addr) s -> do
+    Source (Base64 id) s (Base64 addr) s' -> do
+      -- Here the parse happens afterwards because we can't verify anything
+      -- without knowing the ID
+      loadContext id
       parse s
+
+      parse s'
       setContextAddr addr
 
       -- Add the address to the DHT for future purposes
-      id <- ctxId <$> gets context
-      when (isJust id) $ do
-        insertAddr (fromJust id) addr
-        hasAddr (fromJust id)
+      insertAddr id addr
+      hasAddr id
 
     Version (Base64 ver) ->
       when (ver > 1) $

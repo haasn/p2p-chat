@@ -75,8 +75,7 @@ type Content       = [CSection]
 
 data RSection
   = Target TargetType (Maybe (Base64 Address))
-  | Source (Base64 Id) Signature
-  | SourceAddr (Base64 Address) Signature
+  | Source (Base64 Id) Signature (Base64 Address) Signature
   | Version (Base64 Integer)
   | Support (Base64 Integer)
   | Drop (Base64 Address)

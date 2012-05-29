@@ -31,8 +31,8 @@ import           P2P.Util
 
 instance Serializable RSection where
   encode (Target     t a) = section "TARGET"     [encode t, encode a]
-  encode (Source     i _) = section "SOURCE"     [encode i, signLast]
-  encode (SourceAddr a _) = section "SOURCEADDR" [encode a, signLast]
+  encode (Source i _ a _) = section "SOURCE"
+    [encode i, signLast, encode a, signLast]
   encode (Version    v  ) = section "VERSION"    [encode v]
   encode (Support    v  ) = section "SUPPORT"    [encode v]
   encode (Drop       a  ) = section "DROP"       [encode a]
@@ -49,8 +49,9 @@ instance Serializable RSection where
         TGlobal -> Target TGlobal Nothing
         t       -> Target t (decode $ head l)
 
-    ("source"    , [i,s  ]) -> Source (decode i) (Verify i s)
-    ("sourceaddr", [a,s  ]) -> SourceAddr (decode a) (Verify a s)
+    ("source", [i,s,a,s']) ->
+      Source (decode i) (Verify i s) (decode a) (Verify a s')
+
     ("version"   , [v    ]) -> Version (decode v)
     ("support"   , [v    ]) -> Support (decode v)
     ("drop"      , [a    ]) -> Drop (decode a)
