@@ -1,7 +1,8 @@
 module P2P.Sending where
 
 import           Control.Applicative
-import           Control.Monad.State.Strict (gets)
+import           Control.Monad.Error (throwError)
+import           Control.Monad.State (gets)
 import           Control.Monad.Trans (liftIO)
 
 import           Data.ByteString (ByteString, hPut)
@@ -45,7 +46,7 @@ sendGlobal' rh cs = do
   base <- makeHeader
   let rh' = mkTarget TGlobal Nothing : rh ++ base
 
-  (head <$> gets cwConn) >>= send (Packet rh' cs)
+  trySend CW (Packet rh' cs)
 
 sendAddr :: TargetType -> RoutingHeader -> Content -> Address -> P2P ()
 sendAddr tt rh cs a = do
@@ -53,9 +54,24 @@ sendAddr tt rh cs a = do
   Just home <- gets homeAddr
   let rh' = mkTarget tt (Just a) : rh ++ base
 
-  case dir home a of
-    CW  -> (head <$> gets  cwConn) >>= send (Packet rh' cs)
-    CCW -> (head <$> gets ccwConn) >>= send (Packet rh' cs)
+  trySend (dir home a) (Packet rh' cs)
+
+trySend :: Direction -> Packet -> P2P ()
+trySend d p = do
+  f <- first d
+  s <- second d
+  let cs = f ++ reverse s
+
+  case cs of
+    x:_ -> send p x
+    []  -> throwError "Failed sending packet, no connections!"
+
+  where
+    first  CW = gets  cwConn
+    first CCW = gets ccwConn
+
+    second  CW = gets ccwConn
+    second CCW = gets  cwConn
 
 -- Higher order packet sending functions
 
