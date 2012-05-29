@@ -3,7 +3,7 @@ module Main where
 import           Codec.Crypto.RSA (generateKeyPair)
 
 import           Control.Monad.Error (runErrorT)
-import           Control.Monad.RWS (evalRWST)
+import           Control.Monad.RWS.Strict (evalRWST)
 import           Control.Monad.State (get, put)
 import           Control.Monad.Trans (liftIO)
 
@@ -88,10 +88,18 @@ tests = do
     , roundCheck $ Base64 (chanKey "#foobar")
     ]
 
+myOptions :: Options
+myOptions = Options
+  { verbose     = True
+  , connectAddr = Nothing
+  , listenPort  = 1234
+  , bootstrap   = False
+  }
+
 main :: IO ()
 main = do
   state <- newState
-  res   <- runErrorT (evalRWST tests 1234 state)
+  res   <- runErrorT (evalRWST tests myOptions state)
   print res
 
 newState :: IO P2PState
@@ -107,7 +115,8 @@ newState = do
     , dhtQueue  = []
     , pubKey    = pub
     , privKey   = priv
-    , homeAddr  = 0.1234
+    , homeAddr  = Just 0.1234
     , randomGen = newgen
-    , context   = Context (Just pub) (Just 0.12345) Nothing Nothing Nothing True
+    , context   = Context
+        (Just pub) (Just 0.1234) Nothing Nothing Nothing [] True
     }
