@@ -56,7 +56,13 @@ sendGlobal' rh cs = do
   base <- makeHeader
   let rh' = mkTarget TGlobal Nothing : rh ++ base
 
-  trySend CW (Packet rh' cs)
+  rights <- gets  cwConn
+  lefts  <- gets ccwConn
+  let conns = rights ++ reverse lefts
+
+  case conns of
+    c:_ -> send (Packet rh' cs) c
+    []  -> return ()
 
 sendAddr :: TargetType -> RoutingHeader -> Content -> Address -> P2P ()
 sendAddr tt rh cs a = do
