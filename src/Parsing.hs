@@ -4,7 +4,7 @@ module P2P.Parsing where
 import           Control.Applicative
 import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
-import           Control.Monad.Reader (ask)
+import           Control.Monad.Reader (asks)
 import           Control.Monad.State (gets, modify)
 import           Control.Monad.Trans (liftIO)
 
@@ -71,12 +71,11 @@ instance Parsable RSection where
     -- No-route sections
 
     Identify -> do
-      h    <- fst <$> getContextHandle
-      addr <- gets homeAddr
+      h <- fst <$> getContextHandle
+      Just addr <- gets homeAddr
 
-      when (isJust addr) $ do
-        iam   <- mkIAm <$> gets pubKey <*> pure (fromJust addr) <*> ask
-        hSend h $ Packet [iam] []
+      iam <- mkIAm <$> gets pubKey <*> pure addr <*> asks listenPort
+      hSend h $ Packet [iam] []
 
     IAm (Base64 id) (Base64 adr) (Base64 port) -> do
       (h, host) <- getContextHandle

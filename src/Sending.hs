@@ -1,12 +1,14 @@
 module P2P.Sending where
 
 import           Control.Applicative
+import           Control.Monad (unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State (gets)
 import           Control.Monad.Trans (liftIO)
 
 import           Data.ByteString (ByteString, hPut)
 import qualified Data.Map as Map
+import           Data.Maybe (fromJust, isJust)
 
 import           GHC.IO.Handle (Handle, hFlush, hPutChar)
 
@@ -51,10 +53,13 @@ sendGlobal' rh cs = do
 sendAddr :: TargetType -> RoutingHeader -> Content -> Address -> P2P ()
 sendAddr tt rh cs a = do
   base <- makeHeader
-  Just home <- gets homeAddr
+  home <- gets homeAddr
+
+  unless (isJust home) $ throwError "Cannot send a packet: No local address"
+
   let rh' = mkTarget tt (Just a) : rh ++ base
 
-  trySend (dir home a) (Packet rh' cs)
+  trySend (dir (fromJust home) a) (Packet rh' cs)
 
 trySend :: Direction -> Packet -> P2P ()
 trySend d p = do

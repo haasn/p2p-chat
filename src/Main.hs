@@ -10,7 +10,7 @@ import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar hiding (withMVar)
 import           Control.Exception hiding (handle)
 import           Control.Monad.Error
-import           Control.Monad.Reader (ask)
+import           Control.Monad.Reader (asks)
 import           Control.Monad.RWS.Strict (execRWST)
 import           Control.Monad.State
 
@@ -24,11 +24,11 @@ import           GHC.IO.Handle hiding (hGetLine)
 
 import           Network
 
-import           System.Environment (getArgs)
 import           System.Exit (ExitCode, exitSuccess)
 
 import           P2P
 import           P2P.Math
+import           P2P.Options
 import           P2P.Parsing()
 import           P2P.Processing
 import           P2P.Queue
@@ -37,17 +37,11 @@ import           P2P.Serializing()
 import           P2P.Types
 import           P2P.Util
 
-version :: String
-version = "0.0"
-
-defaultPort :: Port
-defaultPort = 1027
-
 -- Local meta-plumbing
 
 data Meta = Meta
   { myMVar :: MVar P2PState
-  , myPort  :: Port
+  , myOpts :: Options
   }
 
 -- Initial state generation
@@ -74,25 +68,25 @@ newState = do
 
 main :: IO ()
 main = withSocketsDo $ do
-  -- Read arguments and process port number if present
-  args  <- getArgs
-  let { port = case args of
-    [p] -> fromIntegral $ read p
-    _   -> defaultPort
-  }
-
-  -- Generate a new program state using this port as baseline
-  state <- newState
-  mvar  <- newMVar state
-  let meta = Meta mvar port
-
-  -- Open the listening socket
-  sock  <- listenOn (PortNumber port)
 
   -- Basic console output, for before an actual interface is implemented
   putStrLn $ "[?] p2p-chat v" ++ version ++ " loaded"
   putStrLn
     "[?] Legend: ? information, ~ warning, ! error, * exception, $ shell"
+
+  -- Read arguments
+  opts  <- getOptions
+
+  -- Generate innitial state and assign address for bootstrapping if needed
+  state' <- newState
+  let state = if bootstrap opts then state' { homeAddr = Just 0.5 } else state'
+
+  -- Generate a new program state
+  mvar <- newMVar state
+  let meta = Meta mvar opts
+
+  -- Open the listening socket
+  sock  <- listenOn (PortNumber $ listenPort opts)
 
   -- Fork into the main listening thread
   forkIO $ (`finally` sClose sock) . forever . handle $ do
@@ -104,6 +98,11 @@ main = withSocketsDo $ do
 
     forkIO $ runThread h host meta `finally` runP2P meta (close h host)
     return ()
+
+  -- Connect if needed
+  case connectAddr opts of
+    Just (h, p) -> connect meta h p
+    _ -> return ()
 
   handleInput meta
 
@@ -140,7 +139,7 @@ connect m host port = do
     case addr of
       -- If we have an address, send IAM
       Just a -> do
-        iam <- mkIAm <$> gets pubKey <*> pure a <*> ask
+        iam <- mkIAm <$> gets pubKey <*> pure a <*> asks listenPort
         hSend h $ Packet [Identify, iam] []
 
       -- Otherwise, send a DIALIN
@@ -175,7 +174,7 @@ close h host = do
 
 withMVar :: Meta -> P2P () -> IO [(HostName, Port)]
 withMVar m a = modifyMVar (myMVar m) $ \st -> do
-  res <- runErrorT (execRWST a (myPort m) st)
+  res <- runErrorT (execRWST a (myOpts m) st)
   case res of
     Left e  -> do
       putStrLn $ "[!] " ++ e

@@ -1,9 +1,10 @@
 #!/bin/bash
 FILES="
+src/Types.hs
+src/Options.hs
 src/Math.hs
 src/Crypto.hs
 src/Util.hs
-src/Types.hs
 src/P2P.hs
 src/Queue.hs
 src/Sending.hs

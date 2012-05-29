@@ -15,7 +15,7 @@ import           Network (HostName, PortNumber)
 
 -- Global monad
 
-type P2P = RWST Port [(HostName, Port)] P2PState (ErrorT String IO)
+type P2P = RWST Options [(HostName, Port)] P2PState (ErrorT String IO)
 
 -- Global state
 
@@ -41,6 +41,14 @@ type Address    = Double
 type AESKey     = ByteString
 type Port       = PortNumber
 type Queue      = [Delayed]
+
+-- Version and port globals
+
+version :: String
+version = "0.0"
+
+defaultPort :: Port
+defaultPort = 1027
 
 -- Connection type
 
@@ -174,6 +182,15 @@ data Context = Context
 instance Ord PublicKey where
   compare (PublicKey a b c) (PublicKey a' b' c') =
     compare [fromIntegral a,b,c] [fromIntegral a',b',c']
+
+-- Program commandline flags
+
+data Options = Options
+  { verbose     :: Bool
+  , connectAddr :: Maybe (HostName, Port)
+  , listenPort  :: Port
+  , bootstrap   :: Bool
+  }
 
 -- Default context
 
