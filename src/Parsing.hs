@@ -50,8 +50,15 @@ instance Parsable RSection where
     Source (Base64 id) s ->
       loadContext id >> parse s
 
-    SourceAddr (Base64 addr) s ->
-      parse s >> setContextAddr addr
+    SourceAddr (Base64 addr) s -> do
+      parse s
+      setContextAddr addr
+
+      -- Add the address to the DHT for future purposes
+      id <- ctxId <$> gets context
+      when (isJust id) $ do
+        insertAddr (fromJust id) addr
+        hasAddr (fromJust id)
 
     Version (Base64 ver) ->
       when (ver > 1) $
