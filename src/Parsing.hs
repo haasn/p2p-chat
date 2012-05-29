@@ -23,7 +23,12 @@ import           P2P.Util
 instance Parsable RSection where
   parse rsec = case rsec of
     Target tt ma -> do
-      Just myAdr <- gets homeAddr
+      myAdr' <- gets homeAddr
+
+      unless (isJust myAdr') $ throwError
+        "Trying to parse a routed packet before client has an assigned address."
+
+      let Just myAdr = myAdr'
 
       -- Separate and decode the address
       Base64 adr <-
