@@ -2,7 +2,7 @@ module P2P.Processing where
 
 import           Control.Applicative
 import           Control.Monad.Error
-import           Control.Monad.State.Strict
+import           Control.Monad.State
 
 import           Data.ByteString (ByteString)
 import           Data.List (find)

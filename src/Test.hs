@@ -3,8 +3,8 @@ module Main where
 import           Codec.Crypto.RSA (generateKeyPair)
 
 import           Control.Monad.Error (runErrorT)
-import           Control.Monad.RWS.Strict (evalRWST)
-import           Control.Monad.State.Strict (get, put)
+import           Control.Monad.RWS (evalRWST)
+import           Control.Monad.State (get, put)
 import           Control.Monad.Trans (liftIO)
 
 import           Crypto.Random (newGenIO, SystemRandom)

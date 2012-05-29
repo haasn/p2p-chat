@@ -5,7 +5,7 @@ import           Control.Applicative
 import           Control.Monad (when, unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.Reader (ask)
-import           Control.Monad.State.Strict (gets, modify)
+import           Control.Monad.State (gets, modify)
 import           Control.Monad.Trans (liftIO)
 
 import           Data.Maybe (isJust, fromJust)

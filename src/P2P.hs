@@ -2,7 +2,7 @@ module P2P where
 
 import           Control.Applicative
 import           Control.Monad.Error (throwError)
-import           Control.Monad.State.Strict
+import           Control.Monad.State
 
 import           Crypto.Random (SystemRandom)
 

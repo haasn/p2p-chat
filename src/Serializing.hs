@@ -5,7 +5,7 @@ module P2P.Serializing where
 import           Control.Applicative
 import           Control.Monad (join)
 import           Control.Monad.Error (throwError)
-import           Control.Monad.State.Strict (gets)
+import           Control.Monad.State (gets)
 
 import           Crypto.Types.PubKey.RSA (PublicKey(..))
 

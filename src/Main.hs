@@ -12,7 +12,7 @@ import           Control.Exception hiding (handle)
 import           Control.Monad.Error
 import           Control.Monad.Reader (ask)
 import           Control.Monad.RWS.Strict (execRWST)
-import           Control.Monad.State.Strict
+import           Control.Monad.State
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
