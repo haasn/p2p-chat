@@ -186,7 +186,18 @@ getLastField = do
     Just f  -> return f
 
 ctxAddPeer :: (HostName, Port, Address) -> P2P ()
-ctxAddPeer p = modifyContext $ \ctx -> ctx { ctxPeers = p : ctxPeers ctx }
+ctxAddPeer p = modifyContext $ \ctx -> ctx { ctxPeers = add p (ctxPeers ctx) }
+  where
+    add :: a -> Maybe [a] -> Maybe [a]
+    add a Nothing   = Just [a]
+    add a (Just as) = Just (a:as)
+
+ctxHasPeers :: P2P ()
+ctxHasPeers = modifyContext $ \ctx -> ctx { ctxPeers = has (ctxPeers ctx) }
+  where
+    has :: Maybe [a] -> Maybe [a]
+    has (Just as) = Just as
+    has Nothing   = Just []
 
 -- Map processing
 

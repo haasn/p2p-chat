@@ -24,7 +24,7 @@ import           P2P.Types
 process :: Handle -> HostName -> ByteString -> P2P ()
 process h host bs = do
   -- Debugging purposes
-  liftIO . putStrLn $ "[?] " ++ show bs
+  -- liftIO . putStrLn $ "[?] " ++ show bs
 
   let p@(Packet rh _) = decode bs
 
@@ -55,8 +55,12 @@ route bs (Packet rh _) = do
     TGlobal ->
       unless (id == myId) $ do
         -- Send to next CW connection
-        conn <- head <$> gets cwConn
-        cSendRaw conn bs
+        rights <- gets cwConn
+        lefts  <- gets ccwConn
+
+        case rights ++ reverse lefts of
+          c:_ -> cSendRaw c bs
+          []  -> return ()
 
     Exact -> let
         -- Local name for the address, pattern matched to remove type clutter
@@ -103,7 +107,7 @@ prune = updateCW checkConns >> updateCCW checkConns
       | len >  5  = mapM_ disconnect rest >> return keep
       -- Commented out until special-cased
       -- | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
-      -- | len <  3  = sendPanic (head cs) >> return cs
+      -- | len <  3  = sendRequest (head cs) >> return cs
       | otherwise = return cs
         where
           len = length cs

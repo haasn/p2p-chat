@@ -1,6 +1,7 @@
 module P2P.Sending where
 
 import           Control.Applicative
+import           Control.Concurrent.MVar (putMVar)
 import           Control.Monad (unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State (gets)
@@ -41,6 +42,13 @@ sendHeader rh conn = do
   base <- makeHeader
   send (Packet (rh ++ base) []) conn
 
+-- Sending to the loopback connection
+
+sendLoop :: Packet -> P2P ()
+sendLoop p = do
+  mvar <- gets loopback
+  liftIO $ putMVar mvar p
+
 -- Basic packet sending functions
 
 sendGlobal' :: RoutingHeader -> Content -> P2P ()
@@ -69,7 +77,7 @@ trySend d p = do
 
   case cs of
     x:_ -> send p x
-    []  -> throwError "Failed sending packet, no connections!"
+    []  -> sendLoop p
 
   where
     first  CW = gets  cwConn
@@ -88,6 +96,9 @@ sendWhoIs name = sendApprox [mkWhoIs name] (hashName name)
 
 sendWhereIs :: Id -> P2P ()
 sendWhereIs id = sendApprox [mkWhereIs id] (hashId id)
+
+sendRequest :: Connection -> P2P ()
+sendRequest c = return () -- sendExact [Request] (remoteAddr c)
 
 -- Special context-dependent reply functions
 

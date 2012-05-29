@@ -79,6 +79,7 @@ instance Serializable CSection where
   encode (NotFound   i) = section "NOTFOUND" [encode i]
   encode (Update   a _) = section "UPDATE"   [encode a, signLast]
   encode (Request     ) = section "REQUEST"  []
+  encode (Response    ) = section "RESPONSE" []
   encode (Peer   h p a) = section "PEER"     [encode h, encode p, encode a]
 
   encode CUnknown{} = throwError "Trying to encode CUnknown"
@@ -96,6 +97,7 @@ instance Serializable CSection where
     ("update"  , [a,s  ]) -> Update (decode a) (Verify a s)
     ("message" , [t,m,s]) -> Message (decode t) m (Verify m s)
     ("request" , [     ]) -> Request
+    ("response", [     ]) -> Response
     ("peer"    , [h,p,a]) -> Peer (decode h) (decode p) (decode a)
 
     _ -> CUnknown bs

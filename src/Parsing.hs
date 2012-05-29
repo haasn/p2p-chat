@@ -39,11 +39,13 @@ instance Parsable RSection where
         Exact   -> when (myAdr == adr) setIsMe
 
         Approx  -> do
-          next <- head <$> gets (case dir myAdr adr of
-                                  CW  ->  cwConn
-                                  CCW -> ccwConn)
-          when (dist adr myAdr <= dist adr (remoteAddr next))
-            setIsMe
+          nexts <- gets (case dir myAdr adr of
+                           CW  ->  cwConn
+                           CCW -> ccwConn)
+          case nexts of
+            []     -> setIsMe
+            next:_ -> when (dist adr myAdr <= dist adr (remoteAddr next))
+                        setIsMe
 
     Source (Base64 id) s ->
       loadContext id >> parse s
@@ -84,15 +86,20 @@ instance Parsable RSection where
     DialIn -> do
       (h, _) <- getContextHandle
 
-      withPeers $ \peers -> do
-        hSend h $ Packet [mkOffer 0.7] (map (uncurry3 mkPeer) peers)
-        liftIO  $ hClose h
+      withPeers $ \peers -> hSend h $
+        let
+          addrs = map (\(_,_,a) -> a) peers
+          addr  = makeUnique addrs
+        in
+          Packet [mkOffer addr] (map (uncurry3 mkPeer) peers)
 
       -- Send off a random REQUEST now that we've queued up the withPeers
-      sendApprox [Request] 0.5
+      sendApprox [Request] 0.7
 
-    Offer (Base64 addr) ->
+    Offer (Base64 addr) -> do
       modify $ \st -> st { homeAddr = Just addr }
+      (h, _) <- getContextHandle
+      liftIO $ hClose h
 
     RUnknown bs ->
       throwError $ "Unknown or malformed RSection: " ++ show bs
@@ -144,8 +151,10 @@ instance Parsable CSection where
       hasAddr id
 
     Request -> do
-      known <- safePeers
-      reply $ map (uncurry3 mkPeer) known
+      known <- knownPeers
+      reply $ Response : map (uncurry3 mkPeer) known
+
+    Response -> ctxHasPeers
 
     Peer (Base64 host) (Base64 port) (Base64 addr) ->
       -- This is handled separately in Packet's parse because of the involvement
@@ -199,19 +208,20 @@ instance Parsable Content where
 instance Parsable Packet where
   parse (Packet rh cs) = do
     parse rh
+    let noRoute = any isNoRoute rh
 
     if isValid rh
       then do
         isme <- getIsMe
         when isme $ parse cs
 
-        -- Check for PEERs and handle as needed
-        peers <- ctxPeers <$> gets context
-        hasPeers peers
+      else if noRoute
+        then parse cs
+        else throwError "Not a valid packet due to missing sections"
 
-      else unless (any isNoRoute rh) $
-        throwError "Not a valid packet due to missing sections"
-
+    -- Check for PEERs and handle as needed
+    peers <- ctxPeers <$> gets context
+    when (isJust peers) $ hasPeers (fromJust peers)
 
 -- Helpers for encoding/decoding RSA and AES
 

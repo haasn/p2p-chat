@@ -1,5 +1,6 @@
 module P2P.Types where
 
+import           Control.Concurrent.MVar (MVar)
 import           Control.Monad.Error (ErrorT)
 import           Control.Monad.RWS.Strict (RWST)
 
@@ -30,6 +31,7 @@ data P2PState = P2PState
   , privKey   :: PrivateKey
   , homeAddr  :: Maybe Address
   , randomGen :: SystemRandom
+  , loopback  :: MVar Packet
   , context   :: Context
   }
 
@@ -114,6 +116,7 @@ data CSection
   -- Dial-in and recovery
 
   | Request
+  | Response
   | Peer (Base64 HostName) (Base64 Port) (Base64 Address)
 
   -- For parsing failures
@@ -172,7 +175,7 @@ data Context = Context
   , ctxKey     :: Maybe AESKey
   , lastField  :: Maybe ByteString
   , ctxHandle  :: Maybe (Handle, HostName)
-  , ctxPeers   :: [(HostName, Port, Address)]
+  , ctxPeers   :: Maybe [(HostName, Port, Address)]
   , ctxIsMe    :: Bool
   }
  deriving (Eq, Show)
@@ -195,4 +198,4 @@ data Options = Options
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing Nothing Nothing [] False
+nullContext = Context Nothing Nothing Nothing Nothing Nothing Nothing False

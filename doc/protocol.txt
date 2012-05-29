@@ -382,10 +382,21 @@ The content may content the following sections:
 
   REQUEST section:
 
+  > REQUEST
+
   A special section used for when the number of connections on either side
   drops below the critical value (eg. 3), a client sent this should respond
-  with a PEER for every known peer on his end. This is also used for the
-  initial dial-in.
+  with a RESPONSe as well as a PEER for every known peer on his end. This is
+  also used for the initial dial-in.
+
+
+  RESPONSE section:
+
+  > RESPONSE
+
+  This is used as reply to REQUEST and should be accompanied by a selection of
+  PEERs.
+
 
   PEER section:
 

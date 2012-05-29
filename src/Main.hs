@@ -16,7 +16,7 @@ import           Control.Monad.State
 
 import           Crypto.Random (newGenIO, SystemRandom)
 
-import qualified Data.ByteString.Lazy.Char8 as LBS
+import           Data.ByteString (hGetLine)
 import           Data.Char (toLower)
 import qualified Data.Map as Map
 
@@ -50,6 +50,8 @@ newState :: IO P2PState
 newState = do
   gen <- newGenIO :: IO SystemRandom
   let (pub, priv, newgen) = generateKeyPair gen 2048
+  loop <- newEmptyMVar
+
   return P2PState
     { cwConn    = []
     , ccwConn   = []
@@ -61,6 +63,7 @@ newState = do
     , privKey   = priv
     , homeAddr  = Nothing
     , randomGen = newgen
+    , loopback  = loop
     , context   = nullContext
     }
 
@@ -77,7 +80,7 @@ main = withSocketsDo $ do
   -- Read arguments
   opts  <- getOptions
 
-  -- Generate innitial state and assign address for bootstrapping if needed
+  -- Generate initial state and assign address for bootstrapping if needed
   state' <- newState
   let state = if bootstrap opts then state' { homeAddr = Just 0.5 } else state'
 
@@ -98,6 +101,9 @@ main = withSocketsDo $ do
 
     forkIO $ runThread h host meta `finally` runP2P meta (close h host)
     return ()
+
+  -- Spawn a loopback listener
+  forkIO $ listenLoopback meta (loopback state)
 
   -- Connect if needed
   case connectAddr opts of
@@ -127,6 +133,12 @@ handleInput m = forever . handle $ do
 
     _ -> putStrLn "[$] Unrecognized input"
 
+-- Loopback listener
+
+listenLoopback :: Meta -> MVar Packet -> IO ()
+listenLoopback meta mvar = forever . handle $
+  takeMVar mvar >>= runP2P meta . parse
+
 -- Connect to a peer, for whatever purpose
 -- Also sends IAM/IDENTIFY or DIALIN as needed
 
@@ -153,14 +165,11 @@ connect m host port = do
 
 runThread :: Handle -> HostName -> Meta -> IO ()
 runThread h host m = do
-  -- Get all input lazily, split by lines
-  ls <- LBS.lines <$> LBS.hGetContents h
-  mapM_ (handle . runP2P m . go) ls
+  line <- hGetLine h
+  handle . runP2P m $ process h host line >> prune
 
-  where
-    -- Pack a packet into a strict bytestring for reprocessing
-    go :: LBS.ByteString -> P2P ()
-    go packet = process h host (fromLazy packet) >> prune
+  -- Loop indefinitely
+  runThread h host m
 
 -- Close a handle
 
