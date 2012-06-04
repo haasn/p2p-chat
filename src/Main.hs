@@ -141,7 +141,13 @@ handleInput m = forever . handle $ do
 
 listenLoopback :: Meta -> MVar Packet -> IO ()
 listenLoopback meta mvar = forever . handle $
-  takeMVar mvar >>= runP2P meta . parse
+  takeMVar mvar >>= runP2P meta . go
+
+  where
+    go :: Packet -> P2P ()
+    go p = do
+      resetContext
+      parse p
 
 -- Connect to a peer, for whatever purpose
 -- Also sends IAM/IDENTIFY or DIALIN as needed
@@ -153,7 +159,7 @@ connect m host port = do
   runP2P m $ do
     addr <- gets homeAddr
     case addr of
-      -- If we have an address, send IAM
+      -- If we have an address, send IAM, IDENTIFY
       Just a -> do
         iam <- mkIAm <$> gets pubKey <*> pure a <*> asks listenPort
         hSend h $ Packet [Identify, iam] []

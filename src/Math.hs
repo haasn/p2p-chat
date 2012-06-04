@@ -5,7 +5,7 @@ import Crypto.Types.PubKey.RSA (PublicKey, public_n)
 import Data.Bits (xor)
 import Data.Char (ord)
 import Data.Fixed (mod')
-import Data.List (unfoldr, foldl')
+import Data.List (sort, unfoldr, foldl')
 import Data.Tuple (swap)
 
 import P2P.Types
@@ -36,10 +36,11 @@ dist a b = min d (1-d)
 makeUnique :: [Address] -> Address
 makeUnique [ ] = 0.3
 makeUnique [a] = (a + 0.5) `mod'` 1
-makeUnique addrs = (addrs !! first + addrs !! second) / 2
+makeUnique addrs = (as !! first + as !! second) / 2
   where
-    first  = length addrs `div` 2
-    second = first + 1
+    first  = second - 1
+    second = length addrs `div` 2
+    as     = sort addrs
 
 -- Convert a number to and from base 256 representation
 

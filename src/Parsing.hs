@@ -7,6 +7,7 @@ import           Control.Monad.Error (throwError)
 import           Control.Monad.Reader (asks)
 import           Control.Monad.State (gets, modify)
 import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Writer (tell)
 
 import           Data.Maybe (isJust, fromJust)
 
@@ -111,7 +112,16 @@ instance Parsable RSection where
     Offer (Base64 addr) -> do
       modify $ \st -> st { homeAddr = Just addr }
       (h, _) <- getContextHandle
-      liftIO $ hClose h
+
+      ctxHasPeers
+      withPeers $ \peers -> if null peers
+        then do
+          iam <- mkIAm <$> gets pubKey <*> pure addr <*> asks listenPort
+          hSend h $ Packet [Identify, iam] []
+
+        else do
+          liftIO $ hClose h
+          tell $ map (\(a,b,_) -> (a,b)) peers
 
     RUnknown bs ->
       throwError $ "Unknown or malformed RSection: " ++ show bs
@@ -166,7 +176,8 @@ instance Parsable CSection where
       known <- knownPeers
       reply $ Response : map (uncurry3 mkPeer) known
 
-    Response -> ctxHasPeers
+    Response ->
+      ctxHasPeers
 
     Peer (Base64 host) (Base64 port) (Base64 addr) ->
       -- This is handled separately in Packet's parse because of the involvement
