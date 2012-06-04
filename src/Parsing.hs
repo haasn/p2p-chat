@@ -176,8 +176,14 @@ instance Parsable CSection where
       known <- knownPeers
       reply $ Response : map (uncurry3 mkPeer) known
 
-    Response ->
+    Response -> do
       ctxHasPeers
+
+      loop <- getIsLoop
+      unless loop $ do
+        Just c <- (fst <$> getContextHandle) >>= findConnection
+        ctxAddPeer (hostName c, hostPort c, remoteAddr c)
+
 
     Peer (Base64 host) (Base64 port) (Base64 addr) ->
       -- This is handled separately in Packet's parse because of the involvement

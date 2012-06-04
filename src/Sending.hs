@@ -103,8 +103,10 @@ sendWhoIs name = sendApprox [mkWhoIs name] (hashName name)
 sendWhereIs :: Id -> P2P ()
 sendWhereIs id = sendApprox [mkWhereIs id] (hashId id)
 
+{-
 sendRequest :: Connection -> P2P ()
-sendRequest c = return () -- sendExact [Request] (remoteAddr c)
+sendRequest c = sendExact [Request] (remoteAddr c)
+-}
 
 sendRegister :: Name -> P2P ()
 sendRegister name = sendApprox [mkRegister name] (hashName name)

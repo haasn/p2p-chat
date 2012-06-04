@@ -147,6 +147,7 @@ listenLoopback meta mvar = forever . handle $
     go :: Packet -> P2P ()
     go p = do
       resetContext
+      setIsLoop
       parse p
 
 -- Connect to a peer, for whatever purpose

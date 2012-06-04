@@ -176,6 +176,7 @@ data Context = Context
   , ctxHandle  :: Maybe (Handle, HostName)
   , ctxPeers   :: Maybe [(HostName, Port, Address)]
   , ctxIsMe    :: Bool
+  , ctxIsLoop  :: Bool
   }
  deriving (Eq, Show)
 
@@ -197,4 +198,13 @@ data Options = Options
 -- Default context
 
 nullContext :: Context
-nullContext = Context Nothing Nothing Nothing Nothing Nothing Nothing False
+nullContext = Context
+  { ctxId     = Nothing
+  , ctxAddr   = Nothing
+  , ctxKey    = Nothing
+  , lastField = Nothing
+  , ctxHandle = Nothing
+  , ctxPeers  = Nothing
+  , ctxIsMe   = False
+  , ctxIsLoop = False
+  }

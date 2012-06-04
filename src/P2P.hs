@@ -136,6 +136,12 @@ setIsMe = modifyContext $ \ctx -> ctx { ctxIsMe = True }
 getIsMe :: P2P Bool
 getIsMe = withContext (return . ctxIsMe)
 
+setIsLoop :: P2P ()
+setIsLoop = modifyContext $ \ctx -> ctx { ctxIsLoop = True }
+
+getIsLoop :: P2P Bool
+getIsLoop = withContext (return . ctxIsLoop)
+
 setLastField :: ByteString -> P2P ()
 setLastField f = modifyContext $ \ctx -> ctx { lastField = Just f }
 
