@@ -112,7 +112,7 @@ instance Parsable RSection where
           else liftIO (hClose h)
 
       -- Send off a random REQUEST now that we've queued up the withPeers
-      sendApprox [Request] 0.7
+      genAddress >>= sendApprox [Request]
 
     Offer (Base64 addr) -> do
       modify $ \st -> st { homeAddr = Just addr }

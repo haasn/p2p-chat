@@ -65,3 +65,11 @@ genAESKey = withRandomGen $ \gen ->
   case genBytes 32 gen of
     Left e  -> throwError $ "AES key generation failed: " ++ show e
     Right x -> return x
+
+-- Wrapper functions for other randomness
+
+genAddress :: P2P Address
+genAddress = withRandomGen $ \gen ->
+  case genBytes 1 gen of
+    Left e -> throwError $ "Random Address generation failed: " ++ show e
+    Right (x, new) -> return (fromIntegral (BS.head x) / 256, new)
