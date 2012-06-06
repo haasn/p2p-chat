@@ -6,6 +6,7 @@ import           Control.Monad (unless)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State (gets)
 import           Control.Monad.Trans (liftIO)
+import           Control.Monad.Reader (asks)
 
 import           Data.ByteString (ByteString, hPut)
 import qualified Data.Map as Map
@@ -110,6 +111,13 @@ sendRequest c = sendExact [Request] (remoteAddr c)
 
 sendRegister :: Name -> P2P ()
 sendRegister name = sendApprox [mkRegister name] (hashName name)
+
+sendIdent :: Handle -> P2P ()
+sendIdent h = do
+  Just addr <- gets homeAddr
+  iam <- mkIAm <$> gets pubKey <*> pure addr <*> asks listenPort
+
+  hSend h $ Packet [iam, Identify] []
 
 -- Special context-dependent reply functions
 

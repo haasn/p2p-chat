@@ -99,29 +99,26 @@ instance Parsable RSection where
     DialIn -> do
       (h, _) <- getContextHandle
 
-      withPeers $ \peers -> hSend h $
-        let
+      withPeers $ \peers -> do
+        hSend h $ let
           addrs = map (\(_,_,a) -> a) peers
           addr  = makeUnique addrs
-        in
-          Packet [mkOffer addr] (map (uncurry3 mkPeer) peers)
+          in Packet [mkOffer addr] (map (uncurry3 mkPeer) peers)
+
+        loop <- getIsLoop
+        isme <- getIsMe
+        if loop || isme
+          then sendIdent h
+          else liftIO (hClose h)
 
       -- Send off a random REQUEST now that we've queued up the withPeers
       sendApprox [Request] 0.7
 
     Offer (Base64 addr) -> do
       modify $ \st -> st { homeAddr = Just addr }
-      (h, _) <- getContextHandle
 
       ctxHasPeers
-      withPeers $ \peers -> if null peers
-        then do
-          iam <- mkIAm <$> gets pubKey <*> pure addr <*> asks listenPort
-          hSend h $ Packet [Identify, iam] []
-
-        else do
-          liftIO $ hClose h
-          tell $ map (\(a,b,_) -> (a,b)) peers
+      withPeers $ tell . map (\(a,b,_) -> (a,b))
 
     RUnknown bs ->
       throwError $ "Unknown or malformed RSection: " ++ show bs
@@ -176,13 +173,16 @@ instance Parsable CSection where
       known <- knownPeers
       reply $ Response : map (uncurry3 mkPeer) known
 
-    Response -> do
+    Response ->
+      -- Unknown if this is a bug or not, need larger debugging.
       ctxHasPeers
 
+      {-
       loop <- getIsLoop
       unless loop $ do
         Just c <- (fst <$> getContextHandle) >>= findConnection
         ctxAddPeer (hostName c, hostPort c, remoteAddr c)
+      -}
 
 
     Peer (Base64 host) (Base64 port) (Base64 addr) ->

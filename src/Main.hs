@@ -10,7 +10,6 @@ import           Control.Concurrent (forkIO)
 import           Control.Concurrent.MVar hiding (withMVar)
 import           Control.Exception hiding (handle)
 import           Control.Monad.Error
-import           Control.Monad.Reader (asks)
 import           Control.Monad.RWS.Strict (execRWST)
 import           Control.Monad.State
 
@@ -161,13 +160,10 @@ connect m host port = do
     addr <- gets homeAddr
     case addr of
       -- If we have an address, send IAM, IDENTIFY
-      Just a -> do
-        iam <- mkIAm <$> gets pubKey <*> pure a <*> asks listenPort
-        hSend h $ Packet [Identify, iam] []
+      Just _  -> sendIdent h
 
       -- Otherwise, send a DIALIN
-      Nothing ->
-        hSend h $ Packet [DialIn] []
+      Nothing -> hSend h $ Packet [DialIn] []
 
   forkIO $ runThread h host m `finally` runP2P m (close h host)
   return ()
@@ -177,6 +173,7 @@ connect m host port = do
 runThread :: Handle -> HostName -> Meta -> IO ()
 runThread h host m = do
   line <- hGetLine h
+  -- liftIO $ print line
   handle . runP2P m $ process h host line >> prune
 
   -- Loop indefinitely
