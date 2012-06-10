@@ -106,10 +106,10 @@ instance Parsable RSection where
           in Packet [mkOffer addr] (map (uncurry3 mkPeer) peers)
 
         loop <- getIsLoop
-        isme <- getIsMe
-        if loop || isme
-          then sendIdent h
-          else liftIO (hClose h)
+        src  <- ctxId <$> gets context
+        myId <- gets pubKey
+
+        when (loop || src == Just myId) $ sendIdent h
 
       -- Send off a random REQUEST now that we've queued up the withPeers
       genAddress >>= sendApprox [Request]
@@ -173,17 +173,14 @@ instance Parsable CSection where
       known <- knownPeers
       reply $ Response : map (uncurry3 mkPeer) known
 
-    Response ->
+    Response -> do
       -- Unknown if this is a bug or not, need larger debugging.
       ctxHasPeers
 
-      {-
       loop <- getIsLoop
       unless loop $ do
         Just c <- (fst <$> getContextHandle) >>= findConnection
         ctxAddPeer (hostName c, hostPort c, remoteAddr c)
-      -}
-
 
     Peer (Base64 host) (Base64 port) (Base64 addr) ->
       -- This is handled separately in Packet's parse because of the involvement

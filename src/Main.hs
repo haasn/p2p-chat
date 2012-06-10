@@ -168,6 +168,17 @@ connect m host port = do
   forkIO $ runThread h host m `finally` runP2P m (close h host)
   return ()
 
+connectSafe :: Meta -> HostName -> Port -> IO ()
+connectSafe m host port = do
+  skip <- hasConnection m host port
+  unless skip $ connect m host port
+
+hasConnection :: Meta -> HostName -> Port -> IO Bool
+hasConnection m host port = do
+  state <- readMVar (myMVar m)
+  let conns = ccwConn state ++ cwConn state
+  return $ any (\c -> hostName c == host && hostPort c == port) conns
+
 -- Read/Process/Send loop, used for forkIO
 
 runThread :: Handle -> HostName -> Meta -> IO ()
@@ -200,7 +211,7 @@ withMVar m a = modifyMVar (myMVar m) $ \st -> do
     Right r -> return r
 
 runP2P :: Meta -> P2P () -> IO ()
-runP2P m a = withMVar m a >>= mapM_ (uncurry $ connect m)
+runP2P m a = withMVar m a >>= mapM_ (uncurry $ connectSafe m)
 
 -- Exception handler
 

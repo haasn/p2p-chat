@@ -194,9 +194,11 @@ getLastField = do
 ctxAddPeer :: (HostName, Port, Address) -> P2P ()
 ctxAddPeer p = modifyContext $ \ctx -> ctx { ctxPeers = add p (ctxPeers ctx) }
   where
-    add :: a -> Maybe [a] -> Maybe [a]
+    add :: Eq a => a -> Maybe [a] -> Maybe [a]
     add a Nothing   = Just [a]
-    add a (Just as) = Just (a:as)
+    add a (Just as)
+      | a `elem` as = Just as
+      | otherwise   = Just (a:as)
 
 ctxHasPeers :: P2P ()
 ctxHasPeers = modifyContext $ \ctx -> ctx { ctxPeers = has (ctxPeers ctx) }
