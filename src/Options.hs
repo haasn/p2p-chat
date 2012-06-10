@@ -37,8 +37,8 @@ parseAddr s o = o { connectAddr = Just (addr, port) }
     (addr, port') = break (==':') s
 
     port = case port' of
-      [] -> defaultPort
-      p  -> fromInteger $ read p
+      []  -> defaultPort
+      _:p -> fromInteger $ read p
 
 getOptions :: IO Options
 getOptions = do
