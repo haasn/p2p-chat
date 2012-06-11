@@ -92,6 +92,7 @@ instance Parsable RSection where
 
     IAm (Base64 id) (Base64 adr) (Base64 port) -> do
       (h, host) <- getContextHandle
+      insertAddr id adr
       addConnection h host port id adr
 
     DialIn -> do
