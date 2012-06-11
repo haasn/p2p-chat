@@ -2,7 +2,7 @@ module P2P.Sending where
 
 import           Control.Applicative
 import           Control.Concurrent.MVar (putMVar)
-import           Control.Monad (unless)
+import           Control.Monad (unless, when)
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State (gets)
 import           Control.Monad.Trans (liftIO)
@@ -111,6 +111,12 @@ sendRequest c = sendExact [Request] (remoteAddr c)
 
 sendRegister :: Name -> P2P ()
 sendRegister name = sendApprox [mkRegister name] (hashName name)
+
+sendUpdate :: P2P ()
+sendUpdate = do
+  id  <- gets pubKey
+  loc <- gets homeAddr
+  when (isJust loc) $ sendApprox [mkUpdate (fromJust loc)] (hashId id)
 
 sendIdent :: Handle -> P2P ()
 sendIdent h = do

@@ -14,7 +14,7 @@ message name body = withName name $ \addr -> do
   id  <- getId' name
   key <- ensureKey id
   setContextKey key
-  sendExact [mkMessage Single body] addr
+  sendExact [mkSingle body] addr
 
 ensureKey :: Id -> P2P AESKey
 ensureKey id = do

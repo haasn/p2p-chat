@@ -123,6 +123,20 @@ instance Parsable RSection where
 
 instance Parsable CSection where
   parse csec = case csec of
+    Global (Base64 msg) s -> do
+      parse s
+      liftIO . putStrLn $ "<GLOBAL> " ++ msg
+
+    Channel (Base64 raw) s -> do
+      parse s
+      msg <- unAES raw
+      liftIO . putStrLn $ "<CHANNEL> " ++ msg
+
+    Single (Base64 raw) s -> do
+      parse s
+      msg <- unAES raw
+      liftIO . putStrLn $ "<SINGLE> " ++ msg
+
     Key (Base64 key) s -> do
       parse s
       id  <- getContextId
@@ -195,17 +209,6 @@ instance Parsable CSection where
 
     Exist (Base64 name) -> liftIO (putStrLn $
       "[~] Registration for “" ++ name ++ "” failed: Entry already exists")
-
-    Message t m s -> do
-      parse s
-      case t of
-        MGlobal ->
-          let Base64 msg = decode m :: Base64 String
-          in  liftIO $ putStrLn msg
-
-        _       ->
-          let Base64 msg = decode m :: Base64 (AES String)
-          in  unAES msg >>= liftIO . putStrLn
 
     CUnknown bs ->
       throwError $ "Unknown or malformed CSection: " ++ show bs

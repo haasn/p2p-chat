@@ -54,10 +54,6 @@ Legend:
   > {#NAME}
   A placeholder for an RSA-encrypted, base 64 encoded value.
 
-  > {%?NAME}
-  > {#?NAME}
-  Same as the above two, but optionally encrypted (see description).
-
   > {NAME.SIGNATURE}
   A cryptographic RSA signature for the NAME field. If a packet contains any
   section where the FIELD.SIGNATURE does not verify using FIELD and the id
@@ -223,22 +219,27 @@ The content may content the following sections:
 
   = Delivering messages =
 
-  MESSAGE section:
+  GLOBAL section:
 
-  > MESSAGE <TYPE> {%?DATA} {DATA.SIGNATURE}
+  > GLOBAL {DATA} {DATA.SIGNATURE}
 
-  A simple textual message. “TYPE” may be “GLOBAL”, “CHANNEL” or “SINGLE”.
-  SINGLE and CHANNEL messages will contain encrypted DATA, GLOBAL messages
-  will not.
+  An unencrypted global message.
 
-  CHANNEL messages will be encrypted using a key obtained from running the
-  SHA-256 function on the intended channel name.
 
-  Examples:
+  CHANNEL section:
 
-  > MESSAGE GLOBAL {Hello, world!}
-  > MESSAGE CHANNEL {Very secret channel message.}
-  > MESSAGE SINGLE {Extremely confidential royal bank information}
+  > CHANNEL {%DATA} {DATA.SIGNATURE}
+
+  An AES encrypted channel message. The key for this is to be obtained by
+  running the SHA-256 function on the intended channel name.
+
+
+  SINGLE section:
+
+  > SINGLE {%DATA} {DATA.SIGNATURE}
+
+  A message intended for a single person. Encrypted with a key negotiatied
+  using KEY (and otherwise randomly generated).
 
 
   = Negotiating connection parameters =

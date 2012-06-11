@@ -92,9 +92,12 @@ data RSection
  deriving (Eq, Show)
 
 data CSection
-  -- This ByteString must be encoded separately
-  = Message MessageType ByteString Signature
+  -- The three types of message
+  = Global (Base64 String) Signature
+  | Channel (AES64 String) Signature
+  | Single (AES64 String) Signature
 
+  -- Key negotiation
   | Key (RSA64 AESKey) Signature
 
   -- Id table interactions
@@ -130,7 +133,6 @@ type AES64 t = Base64 (AES t)
 -- Target types
 
 data TargetType  = TGlobal | Exact | Approx deriving (Eq, Show, Read)
-data MessageType = MGlobal | Channel | Single deriving (Eq, Show, Read)
 
 -- Represents a delayed delivery packet, for when addresses are not known
 

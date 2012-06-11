@@ -31,7 +31,6 @@ import           P2P.Messaging
 import           P2P.Options
 import           P2P.Parsing()
 import           P2P.Processing
-import           P2P.Queue
 import           P2P.Sending
 import           P2P.Serializing()
 import           P2P.Types
@@ -124,19 +123,18 @@ handleInput m = forever . handle $ do
     "test.connect" -> connect m "localhost" defaultPort
 
     "test.global" -> runP2P m $
-      sendGlobal [mkMessage MGlobal "Hello, world!"]
+      sendGlobal [mkGlobal "Hello, world!"]
 
     "test.dump" -> runP2P m $
       get >>= throwError . show
-
-    "test.queue" -> runP2P m $
-      withName "test" (sendExact [mkMessage MGlobal "Foobar!"])
 
     "test.register" -> runP2P m $
       sendRegister "nand"
 
     "test.message" -> runP2P m $
       message "nand" "foo bar bat baz"
+
+    "test.update" -> runP2P m sendUpdate
 
     _ -> putStrLn "[$] Unrecognized input"
 

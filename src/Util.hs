@@ -79,7 +79,9 @@ mkDrop addr = Drop (Base64 addr)
 mkIAm id addr port = IAm (Base64 id) (Base64 addr) (Base64 port)
 mkOffer addr = Offer (Base64 addr)
 
-mkMessage mt msg = Message mt (pack msg) Signature
+mkGlobal msg = Global (Base64 msg) Signature
+mkChannel msg = Channel (Base64 (AES msg)) Signature
+mkSingle msg = Single (Base64 (AES msg)) Signature
 mkKey k = Key (Base64 (RSA k)) Signature
 mkWhoIs n = WhoIs (Base64 n)
 mkThisIs n id = ThisIs (Base64 n) (Base64 id)

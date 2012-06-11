@@ -64,11 +64,9 @@ instance Serializable RSection where
     _ -> RUnknown bs
 
 instance Serializable CSection where
-  encode (Message t m _) = section "MESSAGE" [encode t, m', signLast]
-    where m' = case t of
-                 MGlobal -> encode $ Base64 m
-                 _       -> encode $ Base64 (AES m)
-
+  encode (Global   m _) = section "GLOBAL"   [encode m, signLast]
+  encode (Channel  m _) = section "CHANNEL"  [encode m, signLast]
+  encode (Single   m _) = section "SINGLE"   [encode m, signLast]
   encode (Key      p _) = section "KEY"      [encode p, signLast]
   encode (WhoIs      n) = section "WHOIS"    [encode n]
   encode (ThisIs   n i) = section "THISIS"   [encode n, encode i]
@@ -86,6 +84,9 @@ instance Serializable CSection where
   encode CUnknown{} = throwError "Trying to encode CUnknown"
 
   decode bs = case parseSection (splitSection bs) of
+    ("global"  , [m,s  ]) -> Global (decode m) (Verify m s)
+    ("channel" , [m,s  ]) -> Channel (decode m) (Verify m s)
+    ("single"  , [m,s  ]) -> Single (decode m) (Verify m s)
     ("key"     , [k,s  ]) -> Key (decode k) (Verify k s)
     ("whois"   , [n    ]) -> WhoIs (decode n)
     ("thisis"  , [n,i  ]) -> ThisIs (decode n) (decode i)
@@ -96,7 +97,6 @@ instance Serializable CSection where
     ("hereis"  , [i,a  ]) -> HereIs (decode i) (decode a)
     ("notfound", [i    ]) -> NotFound (decode i)
     ("update"  , [a,s  ]) -> Update (decode a) (Verify a s)
-    ("message" , [t,m,s]) -> Message (decode t) m (Verify m s)
     ("request" , [     ]) -> Request
     ("response", [     ]) -> Response
     ("peer"    , [h,p,a]) -> Peer (decode h) (decode p) (decode a)
@@ -141,19 +141,6 @@ instance Serializable TargetType where
         "exact"  -> Exact
         "approx" -> Approx
         s        -> error $ "Failed parsing TargetType: " ++ s
-
-instance Serializable MessageType where
-  encode MGlobal = encode "GLOBAL"
-  encode Channel = encode "CHANNEL"
-  encode Single  = encode "SINGLE"
-
-  decode = read' . decode
-    where
-      read' s = case map toLower s of
-        "global"  -> MGlobal
-        "channel" -> Channel
-        "single"  -> Single
-        s         -> error $ "Failed parsing MessageType: " ++ s
 
 instance Serializable s => Serializable (Maybe s) where
   encode Nothing  = return BS.empty
