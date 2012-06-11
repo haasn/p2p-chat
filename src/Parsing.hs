@@ -11,8 +11,6 @@ import           Control.Monad.Writer (tell)
 
 import           Data.Maybe (isJust, fromJust)
 
-import           GHC.IO.Handle (hClose)
-
 import           P2P
 import           P2P.Crypto
 import           P2P.Math

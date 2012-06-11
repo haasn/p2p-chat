@@ -235,12 +235,18 @@ getId name = Map.lookup name <$> gets idTable
 getAddr :: Id -> P2P (Maybe Address)
 getAddr id = Map.lookup id <$> gets locTable
 
+getKey :: Id -> P2P (Maybe AESKey)
+getKey id = Map.lookup id <$> gets keyTable
+
 getId' :: Name -> P2P Id
 getId' name = wrapError (getId name) $
   "ID requested for '" ++ name ++ "' which has none."
 
 getAddr' :: Id -> P2P Address
-getAddr' id = wrapError (getAddr id) "Addr requested for nonexistant id."
+getAddr' id = wrapError (getAddr id) "Addr requested for id which has none."
+
+getKey' :: Id -> P2P AESKey
+getKey' id = wrapError (getKey id) "AESKey requested for id which has none."
 
 -- Packet processing functions
 

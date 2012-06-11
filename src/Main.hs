@@ -27,6 +27,7 @@ import           System.Exit (ExitCode, exitSuccess)
 
 import           P2P
 import           P2P.Math
+import           P2P.Messaging
 import           P2P.Options
 import           P2P.Parsing()
 import           P2P.Processing
@@ -133,6 +134,9 @@ handleInput m = forever . handle $ do
 
     "test.register" -> runP2P m $
       sendRegister "nand"
+
+    "test.message" -> runP2P m $
+      message "nand" "foo bar bat baz"
 
     _ -> putStrLn "[$] Unrecognized input"
 

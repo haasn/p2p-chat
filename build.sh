@@ -8,6 +8,7 @@ src/Util.hs
 src/P2P.hs
 src/Queue.hs
 src/Sending.hs
+src/Messaging.hs
 src/Serializing.hs
 src/Parsing.hs
 src/Processing.hs
