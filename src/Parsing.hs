@@ -127,13 +127,16 @@ instance Parsable CSection where
   parse csec = case csec of
     Global (Base64 msg) s -> do
       parse s
-      liftIO . putStrLn $ "<GLOBAL> " ++ msg
+      id <- getContextId
+      liftIO . putStrLn $ "<GLOBAL:" ++ showId id ++ "> " ++ msg
 
     Channel (Base64 raw) s -> do
       parse s
+      id <- getContextId
       let tryDecode :: String -> P2P ()
           tryDecode chan = case unAES (chanKey chan) raw of
-            Just str -> liftIO . putStrLn $ "<CHAN:" ++ chan ++ "> " ++ str
+            Just str -> liftIO . putStrLn $
+              "<CHAN:" ++ showId id ++ "@" ++ chan ++ "> " ++ str
             Nothing  -> return ()
       gets chanList >>= mapM_ tryDecode
 
