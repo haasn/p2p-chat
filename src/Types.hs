@@ -48,7 +48,7 @@ type Queue      = [Delayed]
 -- Version and port globals
 
 version :: String
-version = "0.0"
+version = "0.1"
 
 defaultPort :: Port
 defaultPort = 1027
