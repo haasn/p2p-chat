@@ -39,3 +39,8 @@ channel :: String -> String -> P2P ()
 channel name body = do
   setContextKey (chanKey name)
   sendGlobal [mkChannel body]
+
+-- Send a message globally
+
+global :: String -> P2P ()
+global = sendGlobal . return . mkGlobal

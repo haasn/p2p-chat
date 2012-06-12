@@ -5,7 +5,6 @@ import           Prelude                  hiding (catch)
 
 import           Codec.Crypto.RSA         (generateKeyPair)
 
-import           Control.Applicative
 import           Control.Concurrent       (forkIO)
 import           Control.Concurrent.MVar  hiding (withMVar)
 import           Control.Exception        hiding (handle)
@@ -16,7 +15,6 @@ import           Control.Monad.State
 import           Crypto.Random            (SystemRandom, newGenIO)
 
 import           Data.ByteString          (hGetLine)
-import           Data.Char                (toLower)
 import qualified Data.Map                 as Map
 
 import           GHC.IO.Handle            hiding (hGetLine)
@@ -114,38 +112,28 @@ main = withSocketsDo $ do
 -- Console input handler
 
 handleInput :: Meta -> IO ()
-handleInput m = forever . handle $ do
-  line <- map toLower <$> getLine
+handleInput m = forever . handle $ getLine >>= runP2P m . processLine
 
-  case line of
-    "quit" -> runP2P m (sendGlobal' [Quit] []) >> exitSuccess
+processLine :: String -> P2P ()
+processLine line = case cmd of
+    "quit" -> sendGlobal' [Quit] [] >> liftIO exitSuccess
 
-    "test.connect" -> connect m "localhost" defaultPort
+    -- Message sending
+    "global" -> global $ unwords args
+    "chan"   -> channel (head args) (unwords $ tail args)
+    "msg"    -> message (head args) (unwords $ tail args)
 
-    "test.global" -> runP2P m $
-      sendGlobal [mkGlobal "Hello, world!"]
+    -- DHT registration
+    "register" -> sendRegister (head args)
 
-    "test.dump" -> runP2P m $
-      get >>= throwError . show
+    -- Channel interaction
+    "join" -> mapM_ joinChannel args
+    "part" -> mapM_ partChannel args
 
-    "test.register" -> runP2P m $
-      sendRegister "nand"
+    _ -> liftIO $ putStrLn "[$] Unrecognized input"
 
-    "test.message" -> runP2P m $
-      message "nand" "foo bar bat baz"
-
-    "test.join" -> runP2P m $
-      joinChannel "#foo"
-
-    "test.channel" -> runP2P m $
-      channel "#foo" "chan message"
-
-    "test.invalid" -> runP2P m $
-      channel "#invalid" "invalid message"
-
-    "test.update" -> runP2P m sendUpdate
-
-    _ -> putStrLn "[$] Unrecognized input"
+  where
+    cmd : args = words line
 
 -- Loopback listener
 
