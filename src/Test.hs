@@ -51,10 +51,6 @@ tests = do
     , roundCheck Exact
     , roundCheck Approx
 
-    , roundCheck MGlobal
-    , roundCheck Channel
-    , roundCheck Single
-
     , roundCheck (Nothing :: Maybe Integer)
     , roundCheck $ Just (12345 :: Integer)
 
@@ -114,6 +110,7 @@ newState = do
     , idTable   = Map.empty
     , locTable  = Map.empty
     , keyTable  = Map.empty
+    , chanList  = []
     , dhtQueue  = []
     , pubKey    = pub
     , privKey   = priv
@@ -121,5 +118,5 @@ newState = do
     , randomGen = newgen
     , loopback  = mvar
     , context   = Context
-        (Just pub) (Just 0.1234) Nothing Nothing Nothing Nothing True
+        (Just pub) (Just 0.1234) Nothing Nothing Nothing Nothing True True
     }
