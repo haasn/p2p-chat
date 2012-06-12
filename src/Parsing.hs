@@ -9,7 +9,6 @@ import           Control.Monad.State (gets, modify)
 import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
 
-import           Data.ByteString (ByteString)
 import           Data.Maybe (isJust, fromJust)
 
 import           P2P
@@ -139,8 +138,9 @@ instance Parsable CSection where
 
     Single (Base64 raw) s -> do
       parse s
+      id <- getContextId
       Just msg <- unAES <$> getContextKey <*> pure raw
-      liftIO . putStrLn $ "<SINGLE> " ++ msg
+      liftIO . putStrLn $ "<SINGLE:" ++ showId id ++ "> " ++ msg
 
     Key (Base64 key) s -> do
       parse s

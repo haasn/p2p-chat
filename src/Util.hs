@@ -12,6 +12,7 @@ import           Data.String (fromString)
 import           Data.Text()
 import           Data.Text.Encoding (encodeUtf8)
 
+import           P2P.Math
 import           P2P.Types
 
 -- Deal with mixtures of strict and lazy ByteStrings
@@ -93,6 +94,28 @@ mkHereIs id addr = HereIs (Base64 id) (Base64 addr)
 mkNotFound id = NotFound (Base64 id)
 mkUpdate addr = Update (Base64 addr) Signature
 mkPeer host port addr = Peer (Base64 host) (Base64 port) (Base64 addr)
+
+-- Helper functions for pretty printing
+
+showLine :: String -> String
+showLine s = " - " ++ s ++ "\n"
+
+showC :: Connection -> String
+showC c =
+  showId (remoteId c) ++ " @ " ++ show (remoteAddr c) ++
+  " (" ++ hostName c ++ ":" ++ show (hostPort c) ++ ")"
+
+showIT :: (Name, Id) -> String
+showIT (name, id) = name ++ " -> " ++ showId id
+
+showLT :: (Id, Address) -> String
+showLT (id, adr) = showId id ++ " -> " ++ show adr
+
+showKT :: (Id, AESKey) -> String
+showKT (id, key) = showId id ++ " -> " ++ show key
+
+showId :: Id -> String
+showId id = '#' : show (hashId id)
 
 -- Higher order composition and currying
 

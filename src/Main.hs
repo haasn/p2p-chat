@@ -26,7 +26,6 @@ import           Network
 import           System.Exit (ExitCode, exitSuccess)
 
 import           P2P
-import           P2P.Math
 import           P2P.Messaging
 import           P2P.Options
 import           P2P.Parsing()
@@ -256,24 +255,3 @@ instance Show P2PState where
     "pubKey: " ++ showId (pubKey p) ++ "\n" ++
 
     "homeAddr: " ++ show (homeAddr p) ++ "\n"
-
-    where
-      showLine :: String -> String
-      showLine s = " - " ++ s ++ "\n"
-
-      showC :: Connection -> String
-      showC c =
-        showId (remoteId c) ++ " @ " ++ show (remoteAddr c) ++
-        " (" ++ hostName c ++ ":" ++ show (hostPort c) ++ ")"
-
-      showIT :: (Name, Id) -> String
-      showIT (name, id) = name ++ " -> " ++ showId id
-
-      showLT :: (Id, Address) -> String
-      showLT (id, adr) = showId id ++ " -> " ++ show adr
-
-      showKT :: (Id, AESKey) -> String
-      showKT (id, key) = showId id ++ " -> " ++ show key
-
-      showId :: Id -> String
-      showId id = '#' : show (hashId id)
