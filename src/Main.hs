@@ -57,6 +57,7 @@ newState = do
     , idTable   = Map.empty
     , locTable  = Map.empty
     , keyTable  = Map.empty
+    , chanList  = []
     , dhtQueue  = []
     , pubKey    = pub
     , privKey   = priv
@@ -133,6 +134,15 @@ handleInput m = forever . handle $ do
 
     "test.message" -> runP2P m $
       message "nand" "foo bar bat baz"
+
+    "test.join" -> runP2P m $
+      joinChannel "#foo"
+
+    "test.channel" -> runP2P m $
+      channel "#foo" "chan message"
+
+    "test.invalid" -> runP2P m $
+      channel "#invalid" "invalid message"
 
     "test.update" -> runP2P m sendUpdate
 

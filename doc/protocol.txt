@@ -231,7 +231,8 @@ The content may content the following sections:
   > CHANNEL {%DATA} {DATA.SIGNATURE}
 
   An AES encrypted channel message. The key for this is to be obtained by
-  running the SHA-256 function on the intended channel name.
+  running the SHA-256 function on the intended channel name. Channel messages
+  themselves will be prefixed by “AESMSG” for verification.
 
 
   SINGLE section:
@@ -239,7 +240,8 @@ The content may content the following sections:
   > SINGLE {%DATA} {DATA.SIGNATURE}
 
   A message intended for a single person. Encrypted with a key negotiatied
-  using KEY (and otherwise randomly generated).
+  using KEY (and otherwise randomly generated). Encrypted messages will be
+  prefixed by “AESMSG” for verification.
 
 
   = Negotiating connection parameters =

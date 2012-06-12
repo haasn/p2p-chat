@@ -145,6 +145,12 @@ getIsLoop = withContext (return . ctxIsLoop)
 setLastField :: ByteString -> P2P ()
 setLastField f = modifyContext $ \ctx -> ctx { lastField = Just f }
 
+joinChannel :: String -> P2P ()
+joinChannel c = modify $ \s -> s { chanList = c : chanList s }
+
+partChannel :: String -> P2P ()
+partChannel c = modify $ \s -> s { chanList = delete c (chanList s) }
+
 loadContext :: Id -> P2P ()
 loadContext id = do
   state <- get

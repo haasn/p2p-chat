@@ -13,6 +13,7 @@ import           Crypto.Types.PubKey.RSA
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
 
 import           Data.String (fromString)
 import           Data.Text.Encoding (encodeUtf8)
@@ -42,11 +43,17 @@ encryptAES :: AESKey -> ByteString -> P2P ByteString
 encryptAES key bs = withRandomGen $ \gen ->
   case genBytes 16 gen of
     Left e        -> throwError $ "IV generation failed: " ++ show e
-    Right (iv, g) -> return (iv `BS.append` crypt' CFB key iv Encrypt bs, g)
+    Right (iv, g) -> return (iv `BS.append` crypt' CFB key iv Encrypt bs', g)
+  where
+    bs' = BS.append (BSC.pack "AESMSG") bs
 
-decryptAES :: AESKey -> ByteString -> ByteString
-decryptAES key msg = crypt' CFB key iv Decrypt bs
-  where (iv, bs) = BS.splitAt 16 msg
+decryptAES :: AESKey -> ByteString -> Maybe ByteString
+decryptAES key msg = case BSC.unpack chan of
+    "AESMSG" -> Just rest
+    _        -> Nothing
+  where
+    (iv, bs) = BS.splitAt 16 msg
+    (chan, rest) = BS.splitAt 6 $ crypt' CFB key iv Decrypt bs
 
 -- Wrapper functions for Codec.Digest.SHA
 

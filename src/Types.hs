@@ -26,6 +26,7 @@ data P2PState = P2PState
   , idTable   :: Map Name Id
   , locTable  :: Map Id Address
   , keyTable  :: Map Id AESKey
+  , chanList  :: [String]
   , dhtQueue  :: Queue
   , pubKey    :: PublicKey
   , privKey   :: PrivateKey

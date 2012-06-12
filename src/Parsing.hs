@@ -9,6 +9,7 @@ import           Control.Monad.State (gets, modify)
 import           Control.Monad.Trans (liftIO)
 import           Control.Monad.Writer (tell)
 
+import           Data.ByteString (ByteString)
 import           Data.Maybe (isJust, fromJust)
 
 import           P2P
@@ -130,12 +131,15 @@ instance Parsable CSection where
 
     Channel (Base64 raw) s -> do
       parse s
-      msg <- unAES raw
-      liftIO . putStrLn $ "<CHANNEL> " ++ msg
+      let tryDecode :: String -> P2P ()
+          tryDecode chan = case unAES (chanKey chan) raw of
+            Just str -> liftIO . putStrLn $ "<CHAN:" ++ chan ++ "> " ++ str
+            Nothing  -> return ()
+      gets chanList >>= mapM_ tryDecode
 
     Single (Base64 raw) s -> do
       parse s
-      msg <- unAES raw
+      Just msg <- unAES <$> getContextKey <*> pure raw
       liftIO . putStrLn $ "<SINGLE> " ++ msg
 
     Key (Base64 key) s -> do
@@ -253,9 +257,9 @@ instance Parsable Packet where
 
 -- Helpers for encoding/decoding RSA and AES
 
-unAES :: Serializable t => AES t -> P2P t
-unAES (AES t)    = return t
-unAES (UnAES bs) = decode .: decryptAES <$> getContextKey <*> pure bs
+unAES :: Serializable t => AESKey -> AES t -> Maybe t
+unAES _ (AES t)    = Just t
+unAES k (UnAES bs) = decode <$> decryptAES k bs
 
 unRSA :: Serializable t => RSA t -> P2P t
 unRSA (RSA t)    = return t

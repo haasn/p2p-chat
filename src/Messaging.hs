@@ -31,3 +31,11 @@ genKey id = do
   sendExact [mkKey key] addr
   insertKey id key
   return key
+
+
+-- Send a message to the channel with given name
+
+channel :: String -> String -> P2P ()
+channel name body = do
+  setContextKey (chanKey name)
+  sendGlobal [mkChannel body]
