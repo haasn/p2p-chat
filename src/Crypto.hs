@@ -1,22 +1,22 @@
 module P2P.Crypto where
 
 import           Codec.Crypto.AES
-import           Codec.Crypto.RSA hiding (sign, verify)
-import qualified Codec.Crypto.RSA as RSA (sign, verify)
-import           Codec.Digest.SHA (Length(..))
-import qualified Codec.Digest.SHA as SHA
+import           Codec.Crypto.RSA        hiding (sign, verify)
+import qualified Codec.Crypto.RSA        as RSA (sign, verify)
+import           Codec.Digest.SHA        (Length(..))
+import qualified Codec.Digest.SHA        as SHA
 
-import           Control.Monad.Error (throwError)
+import           Control.Monad.Error     (throwError)
 
-import           Crypto.Random (CryptoRandomGen, genBytes)
+import           Crypto.Random           (CryptoRandomGen, genBytes)
 import           Crypto.Types.PubKey.RSA
 
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BSC
+import           Data.ByteString         (ByteString)
+import qualified Data.ByteString         as BS
+import qualified Data.ByteString.Char8   as BSC
 
-import           Data.String (fromString)
-import           Data.Text.Encoding (encodeUtf8)
+import           Data.String             (fromString)
+import           Data.Text.Encoding      (encodeUtf8)
 
 import           P2P
 import           P2P.Types

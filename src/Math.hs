@@ -1,14 +1,14 @@
 module P2P.Math where
 
-import Crypto.Types.PubKey.RSA (PublicKey, public_n)
+import           Crypto.Types.PubKey.RSA (PublicKey, public_n)
 
-import Data.Bits (xor)
-import Data.Char (ord)
-import Data.Fixed (mod')
-import Data.List (sort, unfoldr, foldl')
-import Data.Tuple (swap)
+import           Data.Bits               (xor)
+import           Data.Char               (ord)
+import           Data.Fixed              (mod')
+import           Data.List               (foldl', sort, unfoldr)
+import           Data.Tuple              (swap)
 
-import P2P.Types
+import           P2P.Types
 
 -- The hashing function for calculating DHT entry positions
 

@@ -1,18 +1,18 @@
 module P2P.Types where
 
-import           Control.Concurrent.MVar (MVar)
-import           Control.Monad.Error (ErrorT)
+import           Control.Concurrent.MVar  (MVar)
+import           Control.Monad.Error      (ErrorT)
 import           Control.Monad.RWS.Strict (RWST)
 
-import           Crypto.Random (SystemRandom)
-import           Crypto.Types.PubKey.RSA (PublicKey(..), PrivateKey)
+import           Crypto.Random            (SystemRandom)
+import           Crypto.Types.PubKey.RSA  (PrivateKey, PublicKey(..))
 
-import           Data.ByteString (ByteString)
-import           Data.Map (Map)
+import           Data.ByteString          (ByteString)
+import           Data.Map                 (Map)
 
-import           GHC.IO.Handle (Handle)
+import           GHC.IO.Handle            (Handle)
 
-import           Network (HostName, PortNumber)
+import           Network                  (HostName, PortNumber)
 
 -- Global monad
 

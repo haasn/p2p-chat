@@ -4,17 +4,17 @@ import           Control.Applicative
 import           Control.Monad.Error (throwError)
 import           Control.Monad.State
 
-import           Crypto.Random (SystemRandom)
+import           Crypto.Random       (SystemRandom)
 
-import           Data.ByteString (ByteString)
-import qualified Data.Foldable as F (forM_)
-import           Data.List (find, delete)
-import qualified Data.Map as Map
-import           Data.Maybe (fromMaybe)
+import           Data.ByteString     (ByteString)
+import qualified Data.Foldable       as F (forM_)
+import           Data.List           (delete, find)
+import qualified Data.Map            as Map
+import           Data.Maybe          (fromMaybe)
 
 import           GHC.IO.Handle
 
-import           Network (HostName)
+import           Network             (HostName)
 
 import           P2P.Math
 import           P2P.Types

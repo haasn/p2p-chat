@@ -1,24 +1,25 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module P2P.Serializing where
 
 import           Control.Applicative
-import           Control.Monad (join)
-import           Control.Monad.Error (throwError)
-import           Control.Monad.State (gets)
+import           Control.Monad           (join)
+import           Control.Monad.Error     (throwError)
+import           Control.Monad.State     (gets)
 
 import           Crypto.Types.PubKey.RSA (PublicKey(..))
 
+import           Data.Binary.Get         (runGet)
 import           Data.Binary.IEEE754
-import           Data.Binary.Put (runPut)
-import           Data.Binary.Get (runGet)
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Base64 as B64 (encode, decode)
+import           Data.Binary.Put         (runPut)
+import           Data.ByteString         (ByteString)
+import qualified Data.ByteString         as BS
+import qualified Data.ByteString.Base64  as B64 (decode, encode)
 
-import           Data.Char (toLower)
-import           Data.String (fromString)
-import           Data.Text (Text, unpack)
+import           Data.Char               (toLower)
+import           Data.String             (fromString)
+import           Data.Text               (Text, unpack)
 import           Data.Text.Encoding
 
 import           P2P

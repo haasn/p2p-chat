@@ -4,9 +4,9 @@ import           Control.Applicative
 import           Control.Monad.Error
 import           Control.Monad.State
 
-import           Data.ByteString (ByteString)
-import           Data.List (find)
-import           Data.Maybe (isJust)
+import           Data.ByteString     (ByteString)
+import           Data.List           (find)
+import           Data.Maybe          (isJust)
 
 import           GHC.IO.Handle
 
@@ -14,7 +14,7 @@ import           Network
 
 import           P2P
 import           P2P.Math
-import           P2P.Parsing()
+import           P2P.Parsing         ()
 import           P2P.Queue
 import           P2P.Sending
 import           P2P.Types
@@ -105,8 +105,7 @@ prune = updateCW checkConns >> updateCCW checkConns
     checkConns :: [Connection] -> P2P [Connection]
     checkConns cs
       | len >  5  = mapM_ disconnect rest >> return keep
-      -- Commented out until special-cased
-      -- | len == 0  = liftIO (putStrLn "[~] Empty connection buffer!") >> return cs
+      -- Commented out due to infinite loop
       -- | len <  3  = sendRequest (head cs) >> return cs
       | otherwise = return cs
         where

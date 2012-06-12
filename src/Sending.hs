@@ -2,20 +2,20 @@ module P2P.Sending where
 
 import           Control.Applicative
 import           Control.Concurrent.MVar (putMVar)
-import           Control.Monad (unless, when)
-import           Control.Monad.Error (throwError)
-import           Control.Monad.State (gets)
-import           Control.Monad.Trans (liftIO)
-import           Control.Monad.Reader (asks)
+import           Control.Monad           (unless, when)
+import           Control.Monad.Error     (throwError)
+import           Control.Monad.Reader    (asks)
+import           Control.Monad.State     (gets)
+import           Control.Monad.Trans     (liftIO)
 
-import           Data.ByteString (ByteString, hPut)
-import qualified Data.Map as Map
-import           Data.Maybe (fromJust, isJust)
+import           Data.ByteString         (ByteString, hPut)
+import qualified Data.Map                as Map
+import           Data.Maybe              (fromJust, isJust)
 
-import           GHC.IO.Handle (Handle, hFlush, hPutChar)
+import           GHC.IO.Handle           (Handle, hFlush, hPutChar)
 
 import           P2P.Math
-import           P2P.Serializing()
+import           P2P.Serializing         ()
 import           P2P.Types
 import           P2P.Util
 

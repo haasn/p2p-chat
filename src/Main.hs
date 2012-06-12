@@ -1,37 +1,37 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Main where
 
-import           Prelude hiding (catch)
+import           Prelude                  hiding (catch)
 
-import           Codec.Crypto.RSA (generateKeyPair)
+import           Codec.Crypto.RSA         (generateKeyPair)
 
 import           Control.Applicative
-import           Control.Concurrent (forkIO)
-import           Control.Concurrent.MVar hiding (withMVar)
-import           Control.Exception hiding (handle)
+import           Control.Concurrent       (forkIO)
+import           Control.Concurrent.MVar  hiding (withMVar)
+import           Control.Exception        hiding (handle)
 import           Control.Monad.Error
 import           Control.Monad.RWS.Strict (execRWST)
 import           Control.Monad.State
 
-import           Crypto.Random (newGenIO, SystemRandom)
+import           Crypto.Random            (SystemRandom, newGenIO)
 
-import           Data.ByteString (hGetLine)
-import           Data.Char (toLower)
-import qualified Data.Map as Map
+import           Data.ByteString          (hGetLine)
+import           Data.Char                (toLower)
+import qualified Data.Map                 as Map
 
-import           GHC.IO.Handle hiding (hGetLine)
+import           GHC.IO.Handle            hiding (hGetLine)
 
 import           Network
 
-import           System.Exit (ExitCode, exitSuccess)
+import           System.Exit              (ExitCode, exitSuccess)
 
 import           P2P
 import           P2P.Messaging
 import           P2P.Options
-import           P2P.Parsing()
+import           P2P.Parsing              ()
 import           P2P.Processing
 import           P2P.Sending
-import           P2P.Serializing()
+import           P2P.Serializing          ()
 import           P2P.Types
 import           P2P.Util
 

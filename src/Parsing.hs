@@ -1,15 +1,16 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module P2P.Parsing where
 
 import           Control.Applicative
-import           Control.Monad (when, unless)
-import           Control.Monad.Error (throwError)
+import           Control.Monad        (unless, when)
+import           Control.Monad.Error  (throwError)
 import           Control.Monad.Reader (asks)
-import           Control.Monad.State (gets, modify)
-import           Control.Monad.Trans (liftIO)
+import           Control.Monad.State  (gets, modify)
+import           Control.Monad.Trans  (liftIO)
 import           Control.Monad.Writer (tell)
 
-import           Data.Maybe (isJust, fromJust)
+import           Data.Maybe           (fromJust, isJust)
 
 import           P2P
 import           P2P.Crypto

@@ -1,8 +1,8 @@
 module P2P.Options where
 
 import           System.Console.GetOpt
-import           System.Environment (getArgs)
-import           System.Exit (exitFailure)
+import           System.Environment    (getArgs)
+import           System.Exit           (exitFailure)
 
 import           P2P.Types
 

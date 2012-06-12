@@ -1,16 +1,16 @@
 module P2P.Util where
 
-import           Control.Monad.Error (throwError)
+import           Control.Monad.Error  (throwError)
 
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
+import           Data.ByteString      (ByteString)
+import qualified Data.ByteString      as BS
 import qualified Data.ByteString.Lazy as LBS
 
-import qualified Data.Char (ord)
-import           Data.List (find)
-import           Data.String (fromString)
-import           Data.Text()
-import           Data.Text.Encoding (encodeUtf8)
+import qualified Data.Char            (ord)
+import           Data.List            (find)
+import           Data.String          (fromString)
+import           Data.Text            ()
+import           Data.Text.Encoding   (encodeUtf8)
 
 import           P2P.Math
 import           P2P.Types
